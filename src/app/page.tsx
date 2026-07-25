@@ -5,6 +5,7 @@ import Image from "next/image";
 import RegistrationForm from "@/components/RegistrationForm";
 import AlreadyRegistered from "@/components/AlreadyRegistered";
 import LogoutButton from "@/components/LogoutButton";
+import Header from "@/components/Header";
 import { getRegistrationByRoll } from "@/lib/registration-data";
 
 export const dynamic = 'force-dynamic';
@@ -86,53 +87,7 @@ export default async function HomePage() {
         <BackgroundEffects />
       </div>
 
-      {/* College Header Banner */}
-      <header className="relative z-10 w-full border-b border-white/5 bg-[#070d1a]/80 backdrop-blur-xl print-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center gap-3">
-              <div className="shrink-0">
-                <Image
-                  src="/svce-logo.png"
-                  alt="SVCE Logo"
-                  width={80}
-                  height={32}
-                  className="h-8 sm:h-10 w-auto object-contain"
-                  priority
-                />
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-bold text-white leading-tight">
-                  Sri Venkateswara College of Engineering
-                </p>
-                <p className="text-[10px] sm:text-xs text-slate-400 leading-tight">
-                  VAC Registration Portal
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {studentName && (
-                <span className="text-[10px] sm:text-xs text-slate-400 hidden sm:inline">
-                  👋 {studentName}
-                </span>
-              )}
-              <span className="text-[10px] sm:text-xs text-blue-400 border border-blue-500/20 rounded-full px-2 sm:px-3 py-1 bg-blue-500/10 font-semibold hidden sm:inline">
-                ECE
-              </span>
-              <span className="text-[10px] sm:text-xs text-slate-500 border border-white/10 rounded-full px-2 sm:px-3 py-1 bg-white/5">
-                AY 2026–2027
-              </span>
-              <a
-                href="/admin"
-                className="text-[10px] sm:text-xs text-slate-600 hover:text-blue-400 transition border border-white/8 rounded-full px-2 sm:px-3 py-1 bg-white/[0.03] hover:bg-blue-500/10"
-              >
-                Admin
-              </a>
-              <LogoutButton />
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header studentName={studentName} showAdmin={true} />
 
       {/* Page Content */}
       <div className="relative z-10 flex-1 flex items-start justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 print:p-0">
