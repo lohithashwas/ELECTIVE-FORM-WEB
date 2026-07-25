@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
+
 
 interface SubjectInfo {
   subject_code: string;
@@ -154,13 +154,13 @@ export default function AdminPage() {
               {/* Header */}
               <div className="flex flex-col items-center mb-8">
                 <div className="mb-4">
-                  <Image
+                  <img
                     src="/svce-logo.png"
                     alt="SVCE Logo"
                     width={120}
                     height={48}
                     className="h-12 w-auto object-contain"
-                    priority
+                    
                   />
                 </div>
                 <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
@@ -235,13 +235,13 @@ export default function AdminPage() {
       <header className="relative z-10 border-b border-white/5 bg-[#070d1a]/90 backdrop-blur-xl sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image
+            <img
               src="/svce-logo.png"
               alt="SVCE Logo"
               width={70}
               height={28}
               className="h-7 w-auto object-contain"
-              priority
+              
             />
             <span className="font-bold text-sm text-white">Admin Portal</span>
             <span className="hidden sm:inline text-xs text-slate-500 border border-white/10 rounded-full px-2 py-0.5 bg-white/5">

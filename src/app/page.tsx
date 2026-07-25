@@ -1,10 +1,16 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+<<<<<<< HEAD
 import Image from "next/image";
 import RegistrationForm from "@/components/RegistrationForm";
 import AlreadyRegistered from "@/components/AlreadyRegistered";
 import LogoutButton from "@/components/LogoutButton";
+=======
+import AlreadyRegistered from "@/components/AlreadyRegistered";
+import Header from "@/components/Header";
+import RegistrationForm from "@/components/RegistrationForm";
+>>>>>>> 4f4db717bb5026e985441c404324a6731f10982b
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,6 +69,7 @@ export default async function HomePage() {
         <BackgroundEffects />
       </div>
 
+<<<<<<< HEAD
       {/* College Header Banner */}
       <header className="relative z-10 w-full border-b border-white/5 bg-[#070d1a]/80 backdrop-blur-xl print-hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -110,6 +117,11 @@ export default async function HomePage() {
           </div>
         </div>
       </header>
+=======
+      <div className="print-hidden">
+        <Header studentName={studentName} showAdmin={true} />
+      </div>
+>>>>>>> 4f4db717bb5026e985441c404324a6731f10982b
 
       {/* Page Content */}
       <div className="relative z-10 flex-1 flex items-start justify-center px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 print:p-0">

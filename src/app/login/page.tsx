@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -157,7 +157,7 @@ function LoginPageInner() {
           {/* Header */}
           <div className="login-header">
             <div className="login-logo-wrap">
-              <Image src="/svce-logo.png" alt="SVCE Logo" width={52} height={52} className="login-logo" priority />
+              <img src="/svce-logo.png" alt="SVCE Logo" width={52} height={52} className="login-logo"  />
             </div>
             <div>
               <p className="login-college">Sri Venkateswara College of Engineering</p>
