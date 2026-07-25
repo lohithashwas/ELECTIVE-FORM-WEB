@@ -288,3 +288,31 @@
   line-height: 1.5;
   max-width: 300px;
 }
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Force dark mode styles to light mode for printing */
+  .bg-\[\#0f1729\]\/90, .bg-\[\#070d1a\]\/80 {
+    background: white !important;
+  }
+  
+  .text-white {
+    color: black !important;
+  }
+  
+  .text-slate-400 {
+    color: #4b5563 !important;
+  }
+  
+  .border-white\/10 {
+    border-color: #e5e7eb !important;
+  }
+}

@@ -29,6 +29,8 @@ import {
 import { SECTIONS, COLLEGE_EMAIL_DOMAIN } from "@/lib/constants";
 import type { Subject } from "@/lib/validations";
 
+import { useRouter } from "next/navigation";
+
 interface FormState {
   student_name: string;
   registration_number: string;
@@ -48,6 +50,7 @@ interface FieldError {
 }
 
 export default function RegistrationForm() {
+  const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [subjectError, setSubjectError] = useState(false);
@@ -63,8 +66,6 @@ export default function RegistrationForm() {
 
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [registeredSubject, setRegisteredSubject] = useState<string>("");
 
   // Fetch subjects (poll every 10s for seat updates)
   const fetchSubjects = useCallback(async () => {
@@ -96,7 +97,6 @@ export default function RegistrationForm() {
       valid = false;
     }
 
-    const regPrefix = "2127240701";
     const suffix = form.registration_number.trim();
     if (!suffix) {
       errors.registration_number = "Registration number is required";
@@ -164,24 +164,22 @@ export default function RegistrationForm() {
       const data = await res.json();
 
       if (res.ok) {
-        const subj = subjects.find((s) => s.id === form.subject_id);
-        setRegisteredSubject(
-          subj ? `${subj.subject_code} – ${subj.subject_name}` : "your subject"
-        );
-        setSubmitted(true);
         toast.success("Registration Successful!", {
           description: "You have been registered for the elective subject.",
         });
+        // Soft reload the page to trigger Server Component re-render
+        // which will find the registration and display <AlreadyRegistered />
+        router.refresh();
       } else {
         toast.error(data.error || "Registration failed. Please try again.", {
           duration: 5000,
         });
         // Refresh subjects immediately on failure (they may now be full)
         fetchSubjects();
+        setSubmitting(false);
       }
     } catch {
       toast.error("Network error. Please check your connection and try again.");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -194,10 +192,6 @@ export default function RegistrationForm() {
   };
 
   const availableSubjects = subjects.filter((s) => s.filled_seats < s.max_seats);
-
-  if (submitted) {
-    return <SuccessScreen name={form.student_name} subject={registeredSubject} />;
-  }
 
   return (
     <div className="w-full">
@@ -591,41 +585,6 @@ function SubjectAvailability({
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function SuccessScreen({
-  name,
-  subject,
-}: {
-  name: string;
-  subject: string;
-}) {
-  return (
-    <div className="text-center py-4 sm:py-8 animate-in fade-in zoom-in-95 duration-500">
-      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30 mb-6">
-        <CheckCircle2 className="w-10 h-10 text-white" />
-      </div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-        Registration Successful!
-      </h2>
-      <p className="text-slate-300 mb-1 text-sm sm:text-base">
-        Welcome, <span className="font-semibold text-white">{name}</span>!
-      </p>
-      <p className="text-slate-400 text-sm sm:text-base mb-6">
-        You have been registered for:
-      </p>
-      <div className="inline-block rounded-xl bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 px-6 py-4 mb-8 max-w-sm mx-auto">
-        <p className="text-blue-300 font-semibold text-sm sm:text-base leading-relaxed">
-          {subject}
-        </p>
-      </div>
-      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 max-w-sm mx-auto">
-        <p className="text-amber-300 text-xs sm:text-sm">
-          ⚠️ Your registration is final. Please contact the department if you need to make changes.
-        </p>
       </div>
     </div>
   );
