@@ -12,7 +12,7 @@ interface RegistrationDetails {
   subjects: {
     subject_code: string;
     subject_name: string;
-  };
+  } | null;
   created_at: string;
 }
 
@@ -69,10 +69,10 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
             <BookOpen className="w-5 h-5 text-blue-400 mt-0.5 shrink-0 print:text-black" />
             <div>
               <p className="font-mono text-blue-300 text-sm font-semibold mb-1 print:text-black">
-                {data.subjects.subject_code}
+                {data.subjects?.subject_code ?? "—"}
               </p>
               <p className="text-white print:text-black leading-snug">
-                {data.subjects.subject_name}
+                {data.subjects?.subject_name ?? "Subject details not available yet."}
               </p>
             </div>
           </div>

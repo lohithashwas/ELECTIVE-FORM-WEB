@@ -68,6 +68,7 @@ export default function RegistrationForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
   const [submitting, setSubmitting] = useState(false);
   const [localSuccessData, setLocalSuccessData] = useState<any>(null);
+  const [checkingExisting, setCheckingExisting] = useState(false);
 
   // Fetch subjects (poll every 10s for seat updates)
   const fetchSubjects = useCallback(async () => {
@@ -146,13 +147,30 @@ export default function RegistrationForm() {
     e.preventDefault();
     if (!validate()) return;
 
+    const rollNumber = `2127240701${form.registration_number.trim()}`;
+
     setSubmitting(true);
     setFieldErrors({});
+    setCheckingExisting(true);
+
+    try {
+      const existingRes = await fetch(`/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`);
+      const existingData = await existingRes.json();
+
+      if (existingData?.success && existingData?.registration) {
+        setLocalSuccessData(existingData.registration);
+        setSubmitting(false);
+        setCheckingExisting(false);
+        return;
+      }
+    } catch {
+      // Continue with normal registration flow; the server will reject duplicates if needed
+    }
 
     // Combine prefix + suffix into the full registration number for submission
     const payload = {
       ...form,
-      roll_number: `2127240701${form.registration_number.trim()}`,
+      roll_number: rollNumber,
       phone_number: form.phone_number.trim(),
     };
 
@@ -192,20 +210,29 @@ export default function RegistrationForm() {
           duration: 5000,
         });
         
-        // If they are already registered but stuck on the form
         if (data.error && data.error.includes("already registered")) {
-          // If we had a way to fetch their existing registration we would set it here.
-          // For now, we rely on the server refresh as fallback.
-          router.refresh();
+          try {
+            const existingRes = await fetch(`/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`);
+            const existingData = await existingRes.json();
+            if (existingData?.success && existingData?.registration) {
+              setLocalSuccessData(existingData.registration);
+            } else {
+              router.refresh();
+            }
+          } catch {
+            router.refresh();
+          }
         }
         
         // Refresh subjects immediately on failure
         fetchSubjects();
         setSubmitting(false);
+        setCheckingExisting(false);
       }
     } catch {
       toast.error("Network error. Please check your connection and try again.");
       setSubmitting(false);
+      setCheckingExisting(false);
     }
   };
 
@@ -437,10 +464,10 @@ export default function RegistrationForm() {
           <Button
             type="submit"
             className="w-full h-12 text-base font-semibold"
-            disabled={submitting || loadingSubjects || subjectError || availableSubjects.length === 0}
+            disabled={submitting || loadingSubjects || subjectError || availableSubjects.length === 0 || checkingExisting}
             id="submit-registration"
           >
-            {submitting ? (
+            {submitting || checkingExisting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Registering...
