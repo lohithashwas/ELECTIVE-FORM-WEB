@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import RegistrationForm from "@/components/RegistrationForm";
 import AlreadyRegistered from "@/components/AlreadyRegistered";
 import LogoutButton from "@/components/LogoutButton";
