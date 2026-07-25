@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Users,
 } from "lucide-react";
+import AlreadyRegistered from "./AlreadyRegistered";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,7 @@ export default function RegistrationForm() {
 
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
   const [submitting, setSubmitting] = useState(false);
+  const [localSuccessData, setLocalSuccessData] = useState<any>(null);
 
   // Fetch subjects (poll every 10s for seat updates)
   const fetchSubjects = useCallback(async () => {
@@ -167,15 +169,37 @@ export default function RegistrationForm() {
         toast.success("Registration Successful!", {
           description: "You have been registered for the elective subject.",
         });
-        // Soft reload the page to trigger Server Component re-render
-        // which will find the registration and display <AlreadyRegistered />
-        router.refresh();
+        
+        const selectedSubject = subjects.find(s => s.id === payload.subject_id);
+        
+        // Immediately show the success screen using local state
+        setLocalSuccessData({
+          student_name: payload.student_name,
+          roll_number: payload.roll_number,
+          phone_number: payload.phone_number,
+          section: payload.section,
+          college_email: payload.college_email,
+          created_at: new Date().toISOString(),
+          subjects: {
+            subject_code: selectedSubject?.subject_code || "Unknown",
+            subject_name: selectedSubject?.subject_name || "Unknown"
+          }
+        });
+        
         setSubmitting(false);
       } else {
         toast.error(data.error || "Registration failed. Please try again.", {
           duration: 5000,
         });
-        // Refresh subjects immediately on failure (they may now be full)
+        
+        // If they are already registered but stuck on the form
+        if (data.error && data.error.includes("already registered")) {
+          // If we had a way to fetch their existing registration we would set it here.
+          // For now, we rely on the server refresh as fallback.
+          router.refresh();
+        }
+        
+        // Refresh subjects immediately on failure
         fetchSubjects();
         setSubmitting(false);
       }
@@ -193,6 +217,10 @@ export default function RegistrationForm() {
   };
 
   const availableSubjects = subjects.filter((s) => s.filled_seats < s.max_seats);
+
+  if (localSuccessData) {
+    return <AlreadyRegistered data={localSuccessData} />;
+  }
 
   return (
     <div className="w-full">
