@@ -12,12 +12,39 @@ import Header from "@/components/Header";
 import RegistrationForm from "@/components/RegistrationForm";
 >>>>>>> 4f4db717bb5026e985441c404324a6731f10982b
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export default async function HomePage() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-center">
+        <div className="bg-red-500/20 border-2 border-red-500 rounded-xl p-8 max-w-2xl">
+          <h1 className="text-3xl font-bold text-red-500 mb-4">CRITICAL ERROR: MISSING VERCEL KEY</h1>
+          <p className="text-white text-lg mb-4">
+            The <strong>SUPABASE_SERVICE_ROLE_KEY</strong> is missing from your Vercel Environment Variables.
+          </p>
+          <p className="text-slate-300 mb-6 text-left">
+            Because this key is missing, the server is completely blocked from checking if a user is already registered, which is why it accidentally shows the form again instead of the receipt screen.
+          </p>
+          <div className="bg-slate-900 p-4 rounded text-left font-mono text-sm text-green-400">
+            1. Go to Supabase Dashboard -&gt; Settings -&gt; API.<br/>
+            2. Copy the "service_role (secret)" key.<br/>
+            3. Go to Vercel Dashboard -&gt; Settings -&gt; Environment Variables.<br/>
+            4. Add Key: SUPABASE_SERVICE_ROLE_KEY<br/>
+            5. Add Value: (paste the secret key)<br/>
+            6. Redeploy the project on Vercel.<br/>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Validate session ───────────────────────────────────────
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("vac_session")?.value;
