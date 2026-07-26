@@ -6,6 +6,7 @@ import RegistrationForm from "@/components/RegistrationForm";
 import AlreadyRegistered from "@/components/AlreadyRegistered";
 import LogoutButton from "@/components/LogoutButton";
 import Header from "@/components/Header";
+import SessionTimeoutBanner from "@/components/SessionTimeoutBanner";
 import { getRegistrationByRoll } from "@/lib/registration-data";
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,7 @@ export default async function HomePage() {
 
   let studentName = "";
   let studentReg = "";
+  let sessionExpiresAt: number | null = null;
   try {
     const session = JSON.parse(sessionCookie);
     if (!session?.token) redirect("/login");
@@ -65,6 +67,7 @@ export default async function HomePage() {
 
     studentName = data.student_name || session.student_name || "";
     studentReg = data.reg_number || session.reg_number || "";
+    sessionExpiresAt = typeof session.expires_at === "number" ? session.expires_at : null;
   } catch {
     redirect("/login");
   }
@@ -104,6 +107,7 @@ export default async function HomePage() {
             <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none print-hidden" />
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-violet-600/8 rounded-full blur-3xl pointer-events-none print-hidden" />
             <div className="relative p-5 sm:p-8 lg:p-10 print:p-8">
+              <SessionTimeoutBanner expiresAt={sessionExpiresAt} />
               {existingRegistration ? (
                 <AlreadyRegistered data={existingRegistration} />
               ) : (

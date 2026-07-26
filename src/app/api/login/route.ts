@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       reg_number: data.reg_number,
       student_name: data.student_name,
       college_email: data.college_email,
+      expires_at: Date.now() + 90_000,
     };
 
     const response = NextResponse.json({
