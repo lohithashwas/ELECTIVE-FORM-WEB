@@ -5,7 +5,8 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from("subjects")
-      .select("id, subject_code, subject_name, max_seats, filled_seats, status")
+      .select("id, subject_code, subject_name, max_seats, filled_seats, status, elective_group")
+      .order("elective_group", { ascending: true })
       .order("subject_code", { ascending: true });
 
     if (error) {

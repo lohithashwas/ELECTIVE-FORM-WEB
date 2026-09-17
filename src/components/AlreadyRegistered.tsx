@@ -1,7 +1,12 @@
 "use client";
 
-import { CheckCircle2, Download, GraduationCap, User, Hash, Phone, Layers, Mail, BookOpen } from "lucide-react";
+import { CheckCircle2, Download, GraduationCap, User, Hash, Phone, Layers, Mail, BookOpen, BookMarked, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface SubjectDetail {
+  subject_code: string;
+  subject_name: string;
+}
 
 interface RegistrationDetails {
   student_name: string;
@@ -9,10 +14,8 @@ interface RegistrationDetails {
   phone_number: string;
   section: string;
   college_email: string;
-  subjects: {
-    subject_code: string;
-    subject_name: string;
-  } | null;
+  pe2_subject: SubjectDetail | null;
+  pe3_subject: SubjectDetail | null;
   created_at: string;
 }
 
@@ -27,6 +30,9 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
     timeStyle: "short",
   });
 
+  const isReplacement = (code: string | undefined) =>
+    code?.includes("REPLACE") ?? false;
+
   return (
     <div className="w-full animate-in fade-in zoom-in-95 duration-500 print:text-black">
       {/* Header */}
@@ -38,12 +44,12 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
           Registration Confirmed
         </h2>
         <p className="text-slate-400 text-sm sm:text-base print:text-gray-600">
-          You have successfully registered for your VAC elective.
+          You have successfully registered for both Professional Electives.
         </p>
       </div>
 
       {/* Details Card */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 print:border-gray-300 print:bg-white print:text-black shadow-lg">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 print:border-gray-300 print:bg-white print:text-black shadow-lg">
         <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 print:border-gray-200">
           <h3 className="font-semibold text-lg text-white print:text-black">
             Student Details
@@ -60,22 +66,72 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
           <DetailRow icon={<Layers className="w-4 h-4" />} label="Section" value={data.section} />
           <DetailRow icon={<Mail className="w-4 h-4" />} label="College Email" value={data.college_email} />
         </div>
+      </div>
 
-        <div className="mt-6 pt-5 border-t border-white/10 print:border-gray-200">
-          <h3 className="font-semibold text-sm text-slate-300 mb-3 print:text-gray-600 uppercase tracking-wider">
-            Allotted Subject
+      {/* Allotted Subjects */}
+      <div className="space-y-4 mb-8">
+        {/* PE-II */}
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5 print:border-gray-300 print:bg-white">
+          <h3 className="font-semibold text-xs text-blue-400 mb-3 uppercase tracking-wider flex items-center gap-2 print:text-gray-600">
+            <BookOpen className="w-3.5 h-3.5" />
+            Professional Elective II — Allotted Subject
           </h3>
-          <div className="flex gap-3 items-start bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 print:bg-gray-50 print:border-gray-300">
-            <BookOpen className="w-5 h-5 text-blue-400 mt-0.5 shrink-0 print:text-black" />
-            <div>
-              <p className="font-mono text-blue-300 text-sm font-semibold mb-1 print:text-black">
-                {data.subjects?.subject_code ?? "—"}
-              </p>
-              <p className="text-white print:text-black leading-snug">
-                {data.subjects?.subject_name ?? "Subject details not available yet."}
-              </p>
+          {data.pe2_subject ? (
+            <div className="flex gap-3 items-start">
+              {isReplacement(data.pe2_subject.subject_code) ? (
+                <Repeat2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0 print:text-black" />
+              ) : (
+                <BookOpen className="w-5 h-5 text-blue-400 mt-0.5 shrink-0 print:text-black" />
+              )}
+              <div>
+                <p className={`font-mono text-sm font-semibold mb-1 print:text-black ${isReplacement(data.pe2_subject.subject_code) ? "text-amber-300" : "text-blue-300"}`}>
+                  {isReplacement(data.pe2_subject.subject_code) ? "REPLACEMENT" : data.pe2_subject.subject_code}
+                </p>
+                <p className="text-white print:text-black leading-snug">
+                  {data.pe2_subject.subject_name}
+                </p>
+                {isReplacement(data.pe2_subject.subject_code) && (
+                  <p className="text-xs text-amber-400/70 mt-1 print:text-gray-500">
+                    Course completed via NPTEL / IIT / SE / GIP or equivalent
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-slate-400 text-sm">PE-II subject details not available.</p>
+          )}
+        </div>
+
+        {/* PE-III */}
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-5 print:border-gray-300 print:bg-white">
+          <h3 className="font-semibold text-xs text-purple-400 mb-3 uppercase tracking-wider flex items-center gap-2 print:text-gray-600">
+            <BookMarked className="w-3.5 h-3.5" />
+            Professional Elective III — Allotted Subject
+          </h3>
+          {data.pe3_subject ? (
+            <div className="flex gap-3 items-start">
+              {isReplacement(data.pe3_subject.subject_code) ? (
+                <Repeat2 className="w-5 h-5 text-amber-400 mt-0.5 shrink-0 print:text-black" />
+              ) : (
+                <BookMarked className="w-5 h-5 text-purple-400 mt-0.5 shrink-0 print:text-black" />
+              )}
+              <div>
+                <p className={`font-mono text-sm font-semibold mb-1 print:text-black ${isReplacement(data.pe3_subject.subject_code) ? "text-amber-300" : "text-purple-300"}`}>
+                  {isReplacement(data.pe3_subject.subject_code) ? "REPLACEMENT" : data.pe3_subject.subject_code}
+                </p>
+                <p className="text-white print:text-black leading-snug">
+                  {data.pe3_subject.subject_name}
+                </p>
+                {isReplacement(data.pe3_subject.subject_code) && (
+                  <p className="text-xs text-amber-400/70 mt-1 print:text-gray-500">
+                    Course completed via NPTEL / IIT / SE / GIP or equivalent
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm">PE-III subject details not available.</p>
+          )}
         </div>
       </div>
 

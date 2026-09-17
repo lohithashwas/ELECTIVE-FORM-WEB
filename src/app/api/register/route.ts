@@ -29,22 +29,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { student_name, roll_number, phone_number, section, college_email, subject_id } =
-      parseResult.data;
+    const {
+      student_name,
+      roll_number,
+      phone_number,
+      section,
+      college_email,
+      pe2_subject_id,
+      pe3_subject_id,
+    } = parseResult.data;
 
-    // 3. Use PostgreSQL stored procedure for atomic registration
-    // This calls our DB function that does SELECT FOR UPDATE + INSERT in one transaction
+    // 3. Use PostgreSQL stored procedure for atomic dual registration
     const { data, error } = await supabaseAdmin.rpc("register_student", {
-      p_student_name: student_name,
-      p_roll_number: roll_number,
-      p_phone_number: phone_number,
-      p_section: section,
-      p_college_email: college_email,
-      p_subject_id: subject_id,
+      p_student_name:   student_name,
+      p_roll_number:    roll_number,
+      p_phone_number:   phone_number,
+      p_section:        section,
+      p_college_email:  college_email,
+      p_pe2_subject_id: pe2_subject_id,
+      p_pe3_subject_id: pe3_subject_id,
     });
 
     if (error) {
-      // Map PostgreSQL error codes/messages to friendly responses
       const msg = error.message ?? "";
 
       if (msg.includes("duplicate_roll")) {
@@ -59,13 +65,19 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      if (msg.includes("subject_full")) {
+      if (msg.includes("pe2_subject_full")) {
         return NextResponse.json(
-          { error: "Selected subject is already full." },
+          { error: "Selected PE-II subject is already full. Please choose another." },
           { status: 409 }
         );
       }
-      if (msg.includes("subject_not_found")) {
+      if (msg.includes("pe3_subject_full")) {
+        return NextResponse.json(
+          { error: "Selected PE-III subject is already full. Please choose another." },
+          { status: 409 }
+        );
+      }
+      if (msg.includes("subject_not_found") || msg.includes("pe2_subject_not_found") || msg.includes("pe3_subject_not_found")) {
         return NextResponse.json(
           { error: "Selected subject does not exist." },
           { status: 404 }
@@ -118,9 +130,15 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      if (code === "subject_full") {
+      if (code === "pe2_subject_full") {
         return NextResponse.json(
-          { error: "Selected subject is already full." },
+          { error: "Selected PE-II subject is already full. Please choose another." },
+          { status: 409 }
+        );
+      }
+      if (code === "pe3_subject_full") {
+        return NextResponse.json(
+          { error: "Selected PE-III subject is already full. Please choose another." },
           { status: 409 }
         );
       }

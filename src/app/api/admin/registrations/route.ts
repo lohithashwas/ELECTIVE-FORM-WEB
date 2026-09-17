@@ -29,7 +29,13 @@ export async function GET(request: NextRequest) {
       section,
       college_email,
       registered_at,
-      subjects (
+      pe2_subject:pe2_subject_id (
+        subject_code,
+        subject_name,
+        filled_seats,
+        max_seats
+      ),
+      pe3_subject:pe3_subject_id (
         subject_code,
         subject_name,
         filled_seats,

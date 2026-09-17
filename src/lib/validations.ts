@@ -40,9 +40,13 @@ export const registrationSchema = z.object({
       `Email must end with ${COLLEGE_EMAIL_DOMAIN}`
     ),
 
-  subject_id: z
+  pe2_subject_id: z
     .string()
-    .uuid("Please select a valid subject"),
+    .uuid("Please select a valid PE-II subject"),
+
+  pe3_subject_id: z
+    .string()
+    .uuid("Please select a valid PE-III subject"),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -54,6 +58,7 @@ export interface Subject {
   max_seats: number;
   filled_seats: number;
   status: "open" | "full";
+  elective_group: "PE2" | "PE3";
 }
 
 export interface Registration {
@@ -63,6 +68,7 @@ export interface Registration {
   phone_number: string;
   section: string;
   college_email: string;
-  subject_id: string;
+  pe2_subject_id: string;
+  pe3_subject_id: string;
   registered_at: string;
 }

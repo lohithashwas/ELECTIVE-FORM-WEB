@@ -18,7 +18,8 @@ interface Registration {
   section: string;
   college_email: string;
   registered_at: string;
-  subjects: SubjectInfo | null;
+  pe2_subject: SubjectInfo | null;
+  pe3_subject: SubjectInfo | null;
 }
 
 export default function AdminPage() {
@@ -98,14 +99,13 @@ export default function AdminPage() {
     }
   }, [authed, credentials, fetchData]);
 
-  // Unique subjects for filter
-  const subjects = Array.from(
-    new Map(
-      registrations
-        .filter((r) => r.subjects)
-        .map((r) => [r.subjects!.subject_code, r.subjects!.subject_name])
-    ).entries()
-  );
+  // Collect all unique subject codes across PE2 and PE3
+  const subjectMap = new Map<string, string>();
+  registrations.forEach((r) => {
+    if (r.pe2_subject) subjectMap.set(r.pe2_subject.subject_code, r.pe2_subject.subject_name);
+    if (r.pe3_subject) subjectMap.set(r.pe3_subject.subject_code, r.pe3_subject.subject_name);
+  });
+  const subjects = Array.from(subjectMap.entries());
 
   const filtered = registrations.filter((r) => {
     const q = search.toLowerCase();
@@ -117,21 +117,24 @@ export default function AdminPage() {
       r.section.toLowerCase().includes(q) ||
       r.college_email.toLowerCase().includes(q);
     const matchSubject =
-      filterSubject === "all" || r.subjects?.subject_code === filterSubject;
+      filterSubject === "all" ||
+      r.pe2_subject?.subject_code === filterSubject ||
+      r.pe3_subject?.subject_code === filterSubject;
     return matchSearch && matchSubject;
   });
 
-  // Stats
-  const totalSeats = registrations.reduce(
-    (acc, r) => (r.subjects ? Math.max(acc, r.subjects.max_seats) : acc),
-    48
-  );
-  const subjectStats = subjects.map(([code, name]) => {
-    const count = registrations.filter(
-      (r) => r.subjects?.subject_code === code
-    ).length;
-    return { code, name, count };
-  });
+  // Stats: count per subject across both PE slots
+  const totalSeats = 48;
+  const subjectStats = subjects
+    .filter(([code]) => !code.includes("REPLACE"))
+    .map(([code, name]) => {
+      const count = registrations.filter(
+        (r) =>
+          r.pe2_subject?.subject_code === code ||
+          r.pe3_subject?.subject_code === code
+      ).length;
+      return { code, name, count };
+    });
 
   if (!authed) {
     return (
@@ -378,7 +381,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5 bg-white/[0.02]">
-                    {["#", "Student Name", "Registration No.", "Phone No.", "Section", "College Email", "Subject", "Registered At"].map((h) => (
+                    {["#", "Student Name", "Registration No.", "Phone No.", "Section", "College Email", "PE-II Subject", "PE-III Subject", "Registered At"].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 whitespace-nowrap">
                         {h}
                       </th>
@@ -399,11 +402,20 @@ export default function AdminPage() {
                       <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{reg.college_email}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="inline-block text-xs font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded px-2 py-0.5">
-                          {reg.subjects?.subject_code ?? "—"}
+                          {reg.pe2_subject?.subject_code ?? "—"}
                         </span>
-                        <span className="ml-2 text-xs text-slate-500 hidden lg:inline">
-                          {reg.subjects?.subject_name?.slice(0, 30)}
-                          {(reg.subjects?.subject_name?.length ?? 0) > 30 ? "…" : ""}
+                        <span className="ml-1.5 text-xs text-slate-500 hidden lg:inline">
+                          {reg.pe2_subject?.subject_name?.slice(0, 25)}
+                          {(reg.pe2_subject?.subject_name?.length ?? 0) > 25 ? "…" : ""}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-block text-xs font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded px-2 py-0.5">
+                          {reg.pe3_subject?.subject_code ?? "—"}
+                        </span>
+                        <span className="ml-1.5 text-xs text-slate-500 hidden lg:inline">
+                          {reg.pe3_subject?.subject_name?.slice(0, 25)}
+                          {(reg.pe3_subject?.subject_name?.length ?? 0) > 25 ? "…" : ""}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">

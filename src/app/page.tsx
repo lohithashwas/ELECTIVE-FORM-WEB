@@ -1,21 +1,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-import Image from "next/image";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import RegistrationForm from "@/components/RegistrationForm";
 import AlreadyRegistered from "@/components/AlreadyRegistered";
-import LogoutButton from "@/components/LogoutButton";
 import Header from "@/components/Header";
 import SessionTimeoutBanner from "@/components/SessionTimeoutBanner";
 import { getRegistrationByRoll } from "@/lib/registration-data";
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export default async function HomePage() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
