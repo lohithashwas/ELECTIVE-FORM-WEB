@@ -40,13 +40,13 @@ export const registrationSchema = z.object({
       `Email must end with ${COLLEGE_EMAIL_DOMAIN}`
     ),
 
-  pe2_subject_id: z
-    .string()
-    .uuid("Please select a valid PE-II subject"),
+  pe2_p1_id: z.string().uuid("Please select PE-II Priority 1"),
+  pe2_p2_id: z.string().uuid("Please select PE-II Priority 2"),
+  pe2_p3_id: z.string().uuid("Please select PE-II Priority 3"),
 
-  pe3_subject_id: z
-    .string()
-    .uuid("Please select a valid PE-III subject"),
+  pe3_p1_id: z.string().uuid("Please select PE-III Priority 1"),
+  pe3_p2_id: z.string().uuid("Please select PE-III Priority 2"),
+  pe3_p3_id: z.string().uuid("Please select PE-III Priority 3"),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -68,7 +68,14 @@ export interface Registration {
   phone_number: string;
   section: string;
   college_email: string;
-  pe2_subject_id: string;
-  pe3_subject_id: string;
+  pe2_p1_id: string;
+  pe2_p2_id: string;
+  pe2_p3_id: string;
+  pe3_p1_id: string;
+  pe3_p2_id: string;
+  pe3_p3_id: string;
+  pe2_allotted_id?: string | null;
+  pe3_allotted_id?: string | null;
+  is_allotted?: boolean;
   registered_at: string;
 }

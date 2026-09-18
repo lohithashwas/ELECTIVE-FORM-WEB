@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Fetch all registrations with dual subject data
+  // Fetch all registrations with priority and allotment data
   const { data, error } = await supabaseAdmin
     .from("registrations")
     .select(
@@ -30,6 +30,15 @@ export async function GET(request: NextRequest) {
       section,
       college_email,
       registered_at,
+      is_allotted,
+      pe2_p1:pe2_p1_id ( subject_code, subject_name ),
+      pe2_p2:pe2_p2_id ( subject_code, subject_name ),
+      pe2_p3:pe2_p3_id ( subject_code, subject_name ),
+      pe3_p1:pe3_p1_id ( subject_code, subject_name ),
+      pe3_p2:pe3_p2_id ( subject_code, subject_name ),
+      pe3_p3:pe3_p3_id ( subject_code, subject_name ),
+      pe2_allotted:pe2_allotted_id ( subject_code, subject_name ),
+      pe3_allotted:pe3_allotted_id ( subject_code, subject_name ),
       pe2_subject:pe2_subject_id ( subject_code, subject_name ),
       pe3_subject:pe3_subject_id ( subject_code, subject_name )
     `
@@ -43,12 +52,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const pickObj = (val: unknown) => (Array.isArray(val) ? val[0] : val);
+
   // Build flat rows for Excel
   const rows = data.map((reg, idx) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const r = reg as any;
-    const pe2 = Array.isArray(r.pe2_subject) ? r.pe2_subject[0] : r.pe2_subject;
-    const pe3 = Array.isArray(r.pe3_subject) ? r.pe3_subject[0] : r.pe3_subject;
+    const pe2P1 = pickObj(r.pe2_p1);
+    const pe2P2 = pickObj(r.pe2_p2);
+    const pe2P3 = pickObj(r.pe2_p3);
+
+    const pe3P1 = pickObj(r.pe3_p1);
+    const pe3P2 = pickObj(r.pe3_p2);
+    const pe3P3 = pickObj(r.pe3_p3);
+
+    const pe2Allotted = pickObj(r.pe2_allotted) || pickObj(r.pe2_subject);
+    const pe3Allotted = pickObj(r.pe3_allotted) || pickObj(r.pe3_subject);
 
     const registeredAt = reg.registered_at
       ? new Date(reg.registered_at).toLocaleString("en-IN", {
@@ -66,14 +85,21 @@ export async function GET(request: NextRequest) {
       "S.No": idx + 1,
       "Student Name": reg.student_name,
       "Registration No.": reg.roll_number,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      "Phone No.": (reg as any).phone_number ?? "",
+      "Phone No.": r.phone_number ?? "",
       Section: reg.section,
       "College Email": reg.college_email,
-      "PE-II Code": pe2?.subject_code ?? "",
-      "PE-II Subject": pe2?.subject_name ?? "",
-      "PE-III Code": pe3?.subject_code ?? "",
-      "PE-III Subject": pe3?.subject_name ?? "",
+
+      "PE-II Priority 1": pe2P1 ? `${pe2P1.subject_code} - ${pe2P1.subject_name}` : "",
+      "PE-II Priority 2": pe2P2 ? `${pe2P2.subject_code} - ${pe2P2.subject_name}` : "",
+      "PE-II Priority 3": pe2P3 ? `${pe2P3.subject_code} - ${pe2P3.subject_name}` : "",
+
+      "PE-III Priority 1": pe3P1 ? `${pe3P1.subject_code} - ${pe3P1.subject_name}` : "",
+      "PE-III Priority 2": pe3P2 ? `${pe3P2.subject_code} - ${pe3P2.subject_name}` : "",
+      "PE-III Priority 3": pe3P3 ? `${pe3P3.subject_code} - ${pe3P3.subject_name}` : "",
+
+      "Allotted PE-II": pe2Allotted ? `${pe2Allotted.subject_code} - ${pe2Allotted.subject_name}` : "Pending",
+      "Allotted PE-III": pe3Allotted ? `${pe3Allotted.subject_code} - ${pe3Allotted.subject_name}` : "Pending",
+
       "Registered At (IST)": registeredAt,
     };
   });
@@ -90,10 +116,18 @@ export async function GET(request: NextRequest) {
     { wch: 14 }, // Phone No.
     { wch: 10 }, // Section
     { wch: 36 }, // College Email
-    { wch: 14 }, // PE-II Code
-    { wch: 44 }, // PE-II Subject
-    { wch: 14 }, // PE-III Code
-    { wch: 44 }, // PE-III Subject
+
+    { wch: 35 }, // PE2 P1
+    { wch: 35 }, // PE2 P2
+    { wch: 35 }, // PE2 P3
+
+    { wch: 35 }, // PE3 P1
+    { wch: 35 }, // PE3 P2
+    { wch: 35 }, // PE3 P3
+
+    { wch: 40 }, // Allotted PE2
+    { wch: 40 }, // Allotted PE3
+
     { wch: 22 }, // Registered At
   ];
   XLSX.utils.book_append_sheet(wb, ws1, "All Registrations");
@@ -107,26 +141,25 @@ export async function GET(request: NextRequest) {
 
   if (subjectData) {
     const summaryRows = subjectData
-      .filter((s) => s.max_seats < 9999) // exclude Replacement from summary totals
+      .filter((s) => s.max_seats < 9999)
       .map((s) => ({
         "Elective Group": s.elective_group === "PE2" ? "PE-II" : "PE-III",
         "Subject Code": s.subject_code,
         "Subject Name": s.subject_name,
-        "Registered Students": s.filled_seats,
-        "Total Seats": s.max_seats,
+        "Allotted Students": s.filled_seats,
+        "Total Capacity": s.max_seats,
         "Available Seats": s.max_seats - s.filled_seats,
         Status: s.status === "full" ? "FULL" : "OPEN",
       }));
 
-    // Add replacement rows
     const replacementRows = subjectData
       .filter((s) => s.max_seats >= 9999)
       .map((s) => ({
         "Elective Group": s.elective_group === "PE2" ? "PE-II" : "PE-III",
         "Subject Code": s.subject_code,
         "Subject Name": s.subject_name,
-        "Registered Students": s.filled_seats,
-        "Total Seats": 999,
+        "Allotted Students": s.filled_seats,
+        "Total Capacity": 999,
         "Available Seats": 999,
         Status: "OPEN (Replacement)",
       }));
@@ -144,40 +177,6 @@ export async function GET(request: NextRequest) {
     XLSX.utils.book_append_sheet(wb, ws2, "Subject Summary");
   }
 
-  // ── Sheets 3+: Per PE-II subject breakdown ──
-  if (subjectData) {
-    const pe2Subjects = subjectData.filter((s) => s.elective_group === "PE2");
-    for (const subject of pe2Subjects) {
-      const subRows = rows.filter(
-        (r) => r["PE-II Code"] === subject.subject_code
-      );
-      if (subRows.length === 0) continue;
-      const ws = XLSX.utils.json_to_sheet(subRows);
-      ws["!cols"] = [
-        { wch: 6 }, { wch: 28 }, { wch: 18 }, { wch: 14 },
-        { wch: 10 }, { wch: 36 }, { wch: 14 }, { wch: 44 },
-        { wch: 14 }, { wch: 44 }, { wch: 22 },
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, `PE2-${subject.subject_code}`.substring(0, 31));
-    }
-
-    // ── Sheets for PE-III subjects ──
-    const pe3Subjects = subjectData.filter((s) => s.elective_group === "PE3");
-    for (const subject of pe3Subjects) {
-      const subRows = rows.filter(
-        (r) => r["PE-III Code"] === subject.subject_code
-      );
-      if (subRows.length === 0) continue;
-      const ws = XLSX.utils.json_to_sheet(subRows);
-      ws["!cols"] = [
-        { wch: 6 }, { wch: 28 }, { wch: 18 }, { wch: 14 },
-        { wch: 10 }, { wch: 36 }, { wch: 14 }, { wch: 44 },
-        { wch: 14 }, { wch: 44 }, { wch: 22 },
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, `PE3-${subject.subject_code}`.substring(0, 31));
-    }
-  }
-
   // Generate buffer
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -187,7 +186,7 @@ export async function GET(request: NextRequest) {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="VAC_Registrations_${dateStr}.xlsx"`,
+      "Content-Disposition": `attachment; filename="VAC_Registrations_Priorities_${dateStr}.xlsx"`,
       "Cache-Control": "no-store",
     },
   });

@@ -18,6 +18,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Fetch portal settings for results_published status
+  const { data: settings } = await supabaseAdmin
+    .from("portal_settings")
+    .select("results_published")
+    .eq("id", 1)
+    .maybeSingle();
+
   const { data, error } = await supabaseAdmin
     .from("registrations")
     .select(
@@ -29,18 +36,17 @@ export async function GET(request: NextRequest) {
       section,
       college_email,
       registered_at,
-      pe2_subject:pe2_subject_id (
-        subject_code,
-        subject_name,
-        filled_seats,
-        max_seats
-      ),
-      pe3_subject:pe3_subject_id (
-        subject_code,
-        subject_name,
-        filled_seats,
-        max_seats
-      )
+      is_allotted,
+      pe2_p1:pe2_p1_id ( subject_code, subject_name ),
+      pe2_p2:pe2_p2_id ( subject_code, subject_name ),
+      pe2_p3:pe2_p3_id ( subject_code, subject_name ),
+      pe3_p1:pe3_p1_id ( subject_code, subject_name ),
+      pe3_p2:pe3_p2_id ( subject_code, subject_name ),
+      pe3_p3:pe3_p3_id ( subject_code, subject_name ),
+      pe2_allotted:pe2_allotted_id ( subject_code, subject_name ),
+      pe3_allotted:pe3_allotted_id ( subject_code, subject_name ),
+      pe2_subject:pe2_subject_id ( subject_code, subject_name ),
+      pe3_subject:pe3_subject_id ( subject_code, subject_name )
     `
     )
     .order("registered_at", { ascending: false });
@@ -53,5 +59,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ registrations: data });
+  return NextResponse.json({
+    results_published: settings?.results_published ?? false,
+    registrations: data,
+  });
 }

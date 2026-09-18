@@ -35,19 +35,27 @@ export async function POST(request: NextRequest) {
       phone_number,
       section,
       college_email,
-      pe2_subject_id,
-      pe3_subject_id,
+      pe2_p1_id,
+      pe2_p2_id,
+      pe2_p3_id,
+      pe3_p1_id,
+      pe3_p2_id,
+      pe3_p3_id,
     } = parseResult.data;
 
-    // 3. Use PostgreSQL stored procedure for atomic dual registration
+    // 3. Use PostgreSQL stored procedure for atomic dual registration with priorities
     const { data, error } = await supabaseAdmin.rpc("register_student", {
-      p_student_name:   student_name,
-      p_roll_number:    roll_number,
-      p_phone_number:   phone_number,
-      p_section:        section,
-      p_college_email:  college_email,
-      p_pe2_subject_id: pe2_subject_id,
-      p_pe3_subject_id: pe3_subject_id,
+      p_student_name:  student_name,
+      p_roll_number:   roll_number,
+      p_phone_number:  phone_number,
+      p_section:       section,
+      p_college_email: college_email,
+      p_pe2_p1_id:     pe2_p1_id,
+      p_pe2_p2_id:     pe2_p2_id,
+      p_pe2_p3_id:     pe2_p3_id,
+      p_pe3_p1_id:     pe3_p1_id,
+      p_pe3_p2_id:     pe3_p2_id,
+      p_pe3_p3_id:     pe3_p3_id,
     });
 
     if (error) {

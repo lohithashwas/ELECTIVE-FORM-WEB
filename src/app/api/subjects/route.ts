@@ -6,6 +6,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("subjects")
       .select("id, subject_code, subject_name, max_seats, filled_seats, status, elective_group")
+      .not("subject_code", "like", "%REPLACE%")
       .order("elective_group", { ascending: true })
       .order("subject_code", { ascending: true });
 

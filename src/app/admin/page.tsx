@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-
 interface SubjectInfo {
   subject_code: string;
   subject_name: string;
-  filled_seats: number;
-  max_seats: number;
+  filled_seats?: number;
+  max_seats?: number;
 }
 
 interface Registration {
@@ -18,8 +17,17 @@ interface Registration {
   section: string;
   college_email: string;
   registered_at: string;
-  pe2_subject: SubjectInfo | null;
-  pe3_subject: SubjectInfo | null;
+  is_allotted?: boolean;
+  pe2_p1?: SubjectInfo | null;
+  pe2_p2?: SubjectInfo | null;
+  pe2_p3?: SubjectInfo | null;
+  pe3_p1?: SubjectInfo | null;
+  pe3_p2?: SubjectInfo | null;
+  pe3_p3?: SubjectInfo | null;
+  pe2_allotted?: SubjectInfo | null;
+  pe3_allotted?: SubjectInfo | null;
+  pe2_subject?: SubjectInfo | null;
+  pe3_subject?: SubjectInfo | null;
 }
 
 export default function AdminPage() {
@@ -30,10 +38,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
 
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [resultsPublished, setResultsPublished] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filterSubject, setFilterSubject] = useState("all");
   const [exporting, setExporting] = useState(false);
+  const [allotting, setAllotting] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const [credentials, setCredentials] = useState("");
 
   const fetchData = useCallback(async (creds: string) => {
@@ -45,6 +56,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error("Failed");
       const json = await res.json();
       setRegistrations(json.registrations || []);
+      setResultsPublished(Boolean(json.results_published));
     } catch {
       setRegistrations([]);
     } finally {
@@ -66,6 +78,7 @@ export default function AdminPage() {
       setAuthed(true);
       const json = await res.json();
       setRegistrations(json.registrations || []);
+      setResultsPublished(Boolean(json.results_published));
     } else {
       setLoginError("Invalid username or password.");
     }
@@ -82,13 +95,70 @@ export default function AdminPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `VAC_Registrations_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.download = `VAC_Registrations_Priorities_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       alert("Export failed. Please try again.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleRunAllotment = async () => {
+    if (!confirm("Run First-Come, First-Served (FCFS) Auto-Allotment algorithm for all registered students?")) {
+      return;
+    }
+
+    setAllotting(true);
+    try {
+      const res = await fetch("/api/admin/allotment", {
+        method: "POST",
+        headers: { Authorization: `Basic ${credentials}` },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success || (json.data && json.data.success === false)) {
+        const err = json.error || json.data?.message || "Unknown error";
+        alert(`Allotment Failed: ${err}`);
+      } else {
+        const count = json.data?.total_allotted ?? 0;
+        alert(`FCFS Auto-Allotment Completed Successfully!\nTotal Students Allotted: ${count}`);
+        fetchData(credentials);
+      }
+    } catch {
+      alert("Error executing allotment algorithm.");
+    } finally {
+      setAllotting(false);
+    }
+  };
+
+  const handleToggleResults = async (newStatus: boolean) => {
+    const actionStr = newStatus ? "PUBLISH results to student login" : "HIDE results from student login";
+    if (!confirm(`Are you sure you want to ${actionStr}?`)) {
+      return;
+    }
+
+    setToggling(true);
+    try {
+      const res = await fetch("/api/admin/toggle-results", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ published: newStatus }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert("Failed to update results status.");
+      } else {
+        setResultsPublished(Boolean(json.results_published));
+        alert(newStatus ? "Results are now LIVE for all student logins!" : "Results are now HIDDEN from student logins.");
+      }
+    } catch {
+      alert("Error toggling results status.");
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -99,11 +169,11 @@ export default function AdminPage() {
     }
   }, [authed, credentials, fetchData]);
 
-  // Collect all unique subject codes across PE2 and PE3
+  // Unique subject codes
   const subjectMap = new Map<string, string>();
   registrations.forEach((r) => {
-    if (r.pe2_subject) subjectMap.set(r.pe2_subject.subject_code, r.pe2_subject.subject_name);
-    if (r.pe3_subject) subjectMap.set(r.pe3_subject.subject_code, r.pe3_subject.subject_name);
+    if (r.pe2_p1) subjectMap.set(r.pe2_p1.subject_code, r.pe2_p1.subject_name);
+    if (r.pe3_p1) subjectMap.set(r.pe3_p1.subject_code, r.pe3_p1.subject_name);
   });
   const subjects = Array.from(subjectMap.entries());
 
@@ -118,28 +188,19 @@ export default function AdminPage() {
       r.college_email.toLowerCase().includes(q);
     const matchSubject =
       filterSubject === "all" ||
-      r.pe2_subject?.subject_code === filterSubject ||
-      r.pe3_subject?.subject_code === filterSubject;
+      r.pe2_p1?.subject_code === filterSubject ||
+      r.pe3_p1?.subject_code === filterSubject ||
+      r.pe2_allotted?.subject_code === filterSubject ||
+      r.pe3_allotted?.subject_code === filterSubject;
     return matchSearch && matchSubject;
   });
 
-  // Stats: count per subject across both PE slots
   const totalSeats = 48;
-  const subjectStats = subjects
-    .filter(([code]) => !code.includes("REPLACE"))
-    .map(([code, name]) => {
-      const count = registrations.filter(
-        (r) =>
-          r.pe2_subject?.subject_code === code ||
-          r.pe3_subject?.subject_code === code
-      ).length;
-      return { code, name, count };
-    });
+  const allottedCount = registrations.filter((r) => r.is_allotted).length;
 
   if (!authed) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-[#070d1a] relative overflow-hidden">
-        {/* Background */}
         <div
           className="fixed inset-0 pointer-events-none"
           style={{
@@ -147,136 +208,90 @@ export default function AdminPage() {
               "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.12) 0%, transparent 60%), #070d1a",
           }}
         />
-
-        <div className="relative z-10 w-full max-w-md px-4">
-          {/* Card */}
-          <div className="rounded-2xl border border-white/8 bg-[#0f1729]/90 shadow-2xl shadow-black/50 backdrop-blur-xl overflow-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
-
-            <div className="p-8">
-              {/* Header */}
-              <div className="flex flex-col items-center mb-8">
-                <div className="mb-4">
-                  <img
-                    src="/svce-logo.png"
-                    alt="SVCE Logo"
-                    width={120}
-                    height={48}
-                    className="h-12 w-auto object-contain"
-                    
-                  />
-                </div>
-                <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
-                <p className="text-sm text-slate-400 mt-1">VAC Registration · ECE</p>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="admin-username">
-                    Username
-                  </label>
-                  <input
-                    id="admin-username"
-                    type="text"
-                    autoComplete="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500/60 focus:bg-blue-500/5 transition"
-                    placeholder="Enter username"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5" htmlFor="admin-password">
-                    Password
-                  </label>
-                  <input
-                    id="admin-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500/60 focus:bg-blue-500/5 transition"
-                    placeholder="Enter password"
-                    required
-                  />
-                </div>
-
-                {loginError && (
-                  <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2 px-3">
-                    {loginError}
-                  </p>
-                )}
-
-                <button
-                  id="admin-login-btn"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-2.5 text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-blue-600/20"
-                >
-                  {loading ? "Signing in…" : "Sign In"}
-                </button>
-              </form>
-            </div>
+        <div className="w-full max-w-md p-8 relative z-10 bg-[#0f1729]/90 border border-white/10 rounded-3xl shadow-2xl backdrop-blur-xl">
+          <div className="text-center mb-8">
+            <span className="text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">
+              Admin Portal
+            </span>
+            <h1 className="text-2xl font-bold text-white mt-3 mb-1">ECE Department</h1>
+            <p className="text-xs text-slate-400">Sign in to manage registrations & FCFS allotment</p>
           </div>
+
+          {loginError && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center">
+              {loginError}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/60"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500/60"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl transition text-sm shadow-lg shadow-blue-500/25"
+            >
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh bg-[#070d1a] text-white">
+    <div className="min-h-dvh bg-[#070d1a] text-slate-100 relative overflow-x-hidden">
       <div
         className="fixed inset-0 pointer-events-none z-0"
         style={{
           background:
-            "radial-gradient(ellipse 80% 40% at 50% -5%, rgba(59,130,246,0.10) 0%, transparent 60%), #070d1a",
+            "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,0.12) 0%, transparent 60%), #070d1a",
         }}
       />
 
-      {/* Navbar */}
-      <header className="relative z-10 border-b border-white/5 bg-[#070d1a]/90 backdrop-blur-xl sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      {/* Admin Navbar */}
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#070d1a]/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src="/svce-logo.png"
-              alt="SVCE Logo"
-              width={70}
-              height={28}
-              className="h-7 w-auto object-contain"
-              
-            />
-            <span className="font-bold text-sm text-white">Admin Portal</span>
+            <h1 className="text-lg font-bold text-white tracking-tight">ECE Elective Portal</h1>
             <span className="hidden sm:inline text-xs text-slate-500 border border-white/10 rounded-full px-2 py-0.5 bg-white/5">
-              VAC Registration
+              Admin Control Panel
             </span>
           </div>
           <div className="flex items-center gap-3">
             <button
-              id="admin-refresh-btn"
               onClick={() => fetchData(credentials)}
               disabled={dataLoading}
               className="text-xs text-slate-400 hover:text-white border border-white/10 rounded-lg px-3 py-1.5 bg-white/5 hover:bg-white/10 transition flex items-center gap-1.5"
             >
-              <svg viewBox="0 0 24 24" fill="none" className={`w-3.5 h-3.5 ${dataLoading ? "animate-spin" : ""}`}>
-                <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
               Refresh
             </button>
             <button
-              id="admin-export-btn"
               onClick={handleExport}
               disabled={exporting}
               className="text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-emerald-500/30 rounded-lg px-4 py-1.5 transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 disabled:opacity-60"
             >
-              <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
               {exporting ? "Exporting…" : "Download Excel"}
             </button>
             <button
-              id="admin-logout-btn"
               onClick={() => { setAuthed(false); setCredentials(""); setRegistrations([]); }}
               className="text-xs text-slate-500 hover:text-red-400 transition"
             >
@@ -287,6 +302,54 @@ export default function AdminPage() {
       </header>
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Allotment & Results Toggle Control Bar */}
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base font-bold text-white">FCFS Allotment Engine & Results Release</span>
+              {resultsPublished ? (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 animate-pulse">
+                  ● RESULTS LIVE
+                </span>
+              ) : (
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400">
+                  ● RESULTS HIDDEN
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+              Run the FCFS algorithm to determine student course allotment based on submission timestamps. Toggling results will publish or hide the final allotted subjects on student logins.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={handleRunAllotment}
+              disabled={allotting}
+              className="h-11 px-5 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border border-blue-400/30 shadow-lg shadow-blue-500/20 transition flex items-center gap-2"
+            >
+              {allotting ? "Processing Allotment…" : "⚡ Run FCFS Auto-Allotment"}
+            </button>
+
+            {resultsPublished ? (
+              <button
+                onClick={() => handleToggleResults(false)}
+                disabled={toggling}
+                className="h-11 px-5 rounded-xl font-semibold text-xs text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition flex items-center gap-2"
+              >
+                🔒 Hide Results from Students
+              </button>
+            ) : (
+              <button
+                onClick={() => handleToggleResults(true)}
+                disabled={toggling}
+                className="h-11 px-5 rounded-xl font-semibold text-xs text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition flex items-center gap-2"
+              >
+                🚀 Approve & Publish Results
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -296,54 +359,34 @@ export default function AdminPage() {
             icon="👥"
             color="blue"
           />
-          {subjectStats.map((s) => (
-            <StatCard
-              key={s.code}
-              label={s.code}
-              value={s.count}
-              sub={`/ ${totalSeats} seats`}
-              icon="📚"
-              color={s.count >= totalSeats ? "red" : s.count >= totalSeats * 0.8 ? "amber" : "emerald"}
-            />
-          ))}
-        </div>
-
-        {/* Subject seat bars */}
-        <div className="rounded-2xl border border-white/8 bg-[#0f1729]/90 p-6">
-          <h2 className="text-sm font-semibold text-slate-300 mb-4">Seat Occupancy</h2>
-          <div className="space-y-4">
-            {subjectStats.map((s) => {
-              const pct = Math.min(100, Math.round((s.count / totalSeats) * 100));
-              return (
-                <div key={s.code}>
-                  <div className="flex justify-between text-xs text-slate-400 mb-1.5">
-                    <span className="font-medium text-white truncate max-w-xs">{s.name}</span>
-                    <span>{s.count}/{totalSeats} ({pct}%)</span>
-                  </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        pct >= 100
-                          ? "bg-gradient-to-r from-red-500 to-red-600"
-                          : pct >= 80
-                          ? "bg-gradient-to-r from-amber-500 to-amber-600"
-                          : "bg-gradient-to-r from-blue-500 to-emerald-500"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <StatCard
+            label="Allotted Students"
+            value={allottedCount}
+            sub={`/ ${registrations.length}`}
+            icon="⚡"
+            color={allottedCount === registrations.length && registrations.length > 0 ? "emerald" : "amber"}
+          />
+          <StatCard
+            label="Results Status"
+            value={resultsPublished ? 1 : 0}
+            sub={resultsPublished ? "Live on Login" : "Hidden from Login"}
+            icon="📢"
+            color={resultsPublished ? "emerald" : "amber"}
+          />
+          <StatCard
+            label="Subject Max Seats"
+            value={totalSeats}
+            sub="Per Subject"
+            icon="📚"
+            color="blue"
+          />
         </div>
 
         {/* Table */}
         <div className="rounded-2xl border border-white/8 bg-[#0f1729]/90 overflow-hidden">
-          {/* Table Header / Filters */}
           <div className="px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-white">Registration Records</h2>
+              <h2 className="text-sm font-semibold text-white">Student Priority Registrations</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Showing {filtered.length} of {registrations.length} entries
               </p>
@@ -356,22 +399,9 @@ export default function AdminPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500/60 transition w-full sm:w-56"
               />
-              <select
-                value={filterSubject}
-                onChange={(e) => setFilterSubject(e.target.value)}
-                className="rounded-lg bg-white/5 border border-white/10 text-white px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500/60 transition"
-              >
-                <option value="all">All Subjects</option>
-                {subjects.map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {code} – {name.length > 30 ? name.slice(0, 30) + "…" : name}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             {dataLoading ? (
               <div className="py-20 text-center text-slate-500 text-sm">Loading data…</div>
@@ -381,7 +411,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5 bg-white/[0.02]">
-                    {["#", "Student Name", "Registration No.", "Phone No.", "Section", "College Email", "PE-II Subject", "PE-III Subject", "Registered At"].map((h) => (
+                    {["#", "Student Name", "Reg. No", "Sec", "PE-II Priorities (P1 / P2 / P3)", "PE-III Priorities (P1 / P2 / P3)", "Allotted PE-II", "Allotted PE-III", "Submitted At"].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 whitespace-nowrap">
                         {h}
                       </th>
@@ -389,49 +419,87 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((reg, idx) => (
-                    <tr
-                      key={reg.id}
-                      className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors"
-                    >
-                      <td className="px-4 py-3 text-xs text-slate-600">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{reg.student_name}</td>
-                      <td className="px-4 py-3 font-mono text-blue-400 text-xs whitespace-nowrap">{reg.roll_number}</td>
-                      <td className="px-4 py-3 text-slate-300 text-xs whitespace-nowrap">{reg.phone_number ?? "—"}</td>
-                      <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{reg.section}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{reg.college_email}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-block text-xs font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded px-2 py-0.5">
-                          {reg.pe2_subject?.subject_code ?? "—"}
-                        </span>
-                        <span className="ml-1.5 text-xs text-slate-500 hidden lg:inline">
-                          {reg.pe2_subject?.subject_name?.slice(0, 25)}
-                          {(reg.pe2_subject?.subject_name?.length ?? 0) > 25 ? "…" : ""}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-block text-xs font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded px-2 py-0.5">
-                          {reg.pe3_subject?.subject_code ?? "—"}
-                        </span>
-                        <span className="ml-1.5 text-xs text-slate-500 hidden lg:inline">
-                          {reg.pe3_subject?.subject_name?.slice(0, 25)}
-                          {(reg.pe3_subject?.subject_name?.length ?? 0) > 25 ? "…" : ""}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
-                        {reg.registered_at
-                          ? new Date(reg.registered_at).toLocaleString("en-IN", {
-                              timeZone: "Asia/Kolkata",
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map((reg, idx) => {
+                    const pe2Allotted = reg.pe2_allotted || reg.pe2_subject;
+                    const pe3Allotted = reg.pe3_allotted || reg.pe3_subject;
+
+                    return (
+                      <tr
+                        key={reg.id}
+                        className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors"
+                      >
+                        <td className="px-4 py-3 text-xs text-slate-600">{idx + 1}</td>
+                        <td className="px-4 py-3 font-medium text-white whitespace-nowrap">{reg.student_name}</td>
+                        <td className="px-4 py-3 font-mono text-blue-400 text-xs whitespace-nowrap">{reg.roll_number}</td>
+                        <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{reg.section}</td>
+
+                        {/* PE2 Priorities */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          <div className="flex gap-1.5">
+                            <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-mono" title={reg.pe2_p1?.subject_name}>
+                              P1: {reg.pe2_p1?.subject_code ?? "—"}
+                            </span>
+                            <span className="bg-white/5 text-slate-400 px-2 py-0.5 rounded font-mono" title={reg.pe2_p2?.subject_name}>
+                              P2: {reg.pe2_p2?.subject_code ?? "—"}
+                            </span>
+                            <span className="bg-white/5 text-slate-400 px-2 py-0.5 rounded font-mono" title={reg.pe2_p3?.subject_name}>
+                              P3: {reg.pe2_p3?.subject_code ?? "—"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* PE3 Priorities */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          <div className="flex gap-1.5">
+                            <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono" title={reg.pe3_p1?.subject_name}>
+                              P1: {reg.pe3_p1?.subject_code ?? "—"}
+                            </span>
+                            <span className="bg-white/5 text-slate-400 px-2 py-0.5 rounded font-mono" title={reg.pe3_p2?.subject_name}>
+                              P2: {reg.pe3_p2?.subject_code ?? "—"}
+                            </span>
+                            <span className="bg-white/5 text-slate-400 px-2 py-0.5 rounded font-mono" title={reg.pe3_p3?.subject_name}>
+                              P3: {reg.pe3_p3?.subject_code ?? "—"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Allotted PE2 */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          {pe2Allotted ? (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-md font-mono font-semibold">
+                              {pe2Allotted.subject_code}
+                            </span>
+                          ) : (
+                            <span className="text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded">Pending</span>
+                          )}
+                        </td>
+
+                        {/* Allotted PE3 */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs">
+                          {pe3Allotted ? (
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-md font-mono font-semibold">
+                              {pe3Allotted.subject_code}
+                            </span>
+                          ) : (
+                            <span className="text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded">Pending</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
+                          {reg.registered_at
+                            ? new Date(reg.registered_at).toLocaleString("en-IN", {
+                                timeZone: "Asia/Kolkata",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
