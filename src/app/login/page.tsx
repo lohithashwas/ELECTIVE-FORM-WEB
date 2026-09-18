@@ -161,7 +161,7 @@ function LoginPageInner() {
             </div>
             <div>
               <p className="login-college">Sri Venkateswara College of Engineering</p>
-              <p className="login-portal-name">VAC Registration Portal · ECE</p>
+              <p className="login-portal-name">Elective Registration Portal · ECE</p>
             </div>
           </div>
 

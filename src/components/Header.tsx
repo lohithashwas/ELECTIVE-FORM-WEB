@@ -34,7 +34,7 @@ export default function Header({ studentName, showAdmin }: { studentName?: strin
             </div>
             <div className="hidden sm:block">
               <p className="text-xs sm:text-sm font-bold text-white leading-tight">Sri Venkateswara College of Engineering</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 leading-tight">VAC Registration Portal</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 leading-tight">Elective Registration Portal</p>
             </div>
           </div>
 
@@ -64,7 +64,7 @@ export default function Header({ studentName, showAdmin }: { studentName?: strin
         </div>
       </div>
 
-      {/* Mobile expandable menu (in-flow so it pushes content down) */}
+      {/* Mobile expandable menu */}
       <div className={`sm:hidden overflow-hidden transition-[max-height,padding] duration-200 ${open ? 'max-h-64 p-3' : 'max-h-0 p-0'}`}>
         <div className="w-full bg-[#0b1220] border-t border-white/6">
           <div className="flex flex-col gap-2">

@@ -1,5 +1,5 @@
 -- ============================================================
---  Complete Reset & 3-Priority Elective Setup Script
+--  Complete Reset & 3-Priority Elective Setup Script (FIXED SAFE UPDATES)
 --  Clears all test data cleanly, resets database, and installs:
 --  1. Fresh PE-II (6 subjects) and PE-III (6 subjects) [No Replacements]
 --  2. 193 Nominal Roll ECE Students Seed
@@ -16,10 +16,10 @@
 TRUNCATE TABLE public.registrations CASCADE;
 
 -- Reset student session tokens
-UPDATE public.students SET active_session_token = NULL, session_started_at = NULL;
+UPDATE public.students SET active_session_token = NULL, session_started_at = NULL WHERE id IS NOT NULL;
 
 -- Remove all existing subjects so fresh subjects can be seeded
-DELETE FROM public.subjects;
+DELETE FROM public.subjects WHERE id IS NOT NULL;
 
 
 -- ─── STEP 2: CREATE OR UPDATE TABLES ─────────────────────────
@@ -409,7 +409,7 @@ END;
 $$;
 
 
--- 2. FCFS Auto-Allotment RPC
+-- 2. FCFS Auto-Allotment RPC (SAFE UPDATES COMPLIANT)
 CREATE OR REPLACE FUNCTION public.run_fcfs_allotment()
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -427,10 +427,11 @@ DECLARE
   v_pe3_chosen        UUID;
   v_count_allotted    INTEGER := 0;
 BEGIN
-  -- Reset filled seats on all subjects
+  -- Reset filled seats on all subjects with explicit WHERE clause
   UPDATE public.subjects
   SET filled_seats = 0,
-      status = 'open';
+      status = 'open'
+  WHERE id IS NOT NULL;
 
   -- Loop over all registrations ordered strictly by registration timestamp ASC
   FOR v_reg IN (
