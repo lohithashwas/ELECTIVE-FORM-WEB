@@ -14,8 +14,6 @@ import {
   AlertCircle,
   BookMarked,
   Award,
-  Sparkles,
-  CheckCircle2,
 } from "lucide-react";
 import AlreadyRegistered from "./AlreadyRegistered";
 import { Button } from "@/components/ui/button";
@@ -95,7 +93,7 @@ export default function RegistrationForm() {
   const [localSuccessData, setLocalSuccessData] = useState<any>(null);
   const [checkingExisting, setCheckingExisting] = useState(true);
 
-  // 1. Session check & auto-fill / already-registered check
+  // 1. Session check to verify if ALREADY registered (NO autofill)
   useEffect(() => {
     let isMounted = true;
     async function checkSessionAndRegistration() {
@@ -106,27 +104,10 @@ export default function RegistrationForm() {
           const data = await res.json();
           if (!isMounted) return;
 
-          if (data.authenticated) {
-            if (data.registered && data.registration) {
-              setLocalSuccessData(data.registration);
-              return;
-            }
-
-            // Autofill student data from active session
-            if (data.student_name) {
-              setForm((prev) => ({
-                ...prev,
-                student_name: prev.student_name || data.student_name,
-              }));
-            }
-            if (data.reg_number) {
-              const digitsOnly = data.reg_number.replace(/\D/g, "");
-              const last3 = digitsOnly.slice(-3);
-              setForm((prev) => ({
-                ...prev,
-                registration_number: prev.registration_number || last3,
-              }));
-            }
+          if (data.authenticated && data.registered && data.registration) {
+            // Already registered -> render receipt screen
+            setLocalSuccessData(data.registration);
+            return;
           }
         }
       } catch (err) {
@@ -407,7 +388,7 @@ export default function RegistrationForm() {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-4">
         <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-        <p className="text-slate-300 text-sm font-medium">Verifying registration status...</p>
+        <p className="text-slate-300 text-sm font-medium">Loading form...</p>
       </div>
     );
   }
@@ -558,7 +539,7 @@ export default function RegistrationForm() {
               <div>
                 <h3 className="text-base font-semibold text-blue-300">Professional Elective II Choices</h3>
                 <p className="text-xs text-slate-400">
-                  {isPe2Nptel ? "NPTEL Course Replacement Mode Active" : "Select 3 courses in order of preference"}
+                  {isPe2Nptel ? "NPTEL Course Replacement Active" : "Select 3 courses in order of preference"}
                 </p>
               </div>
             </div>
@@ -576,20 +557,19 @@ export default function RegistrationForm() {
                   setFieldErrors((prev) => ({ ...prev, nptel_pe2_course: undefined }));
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+              className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all border cursor-pointer select-none ${
                 isPe2Nptel
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
-                  : "bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20"
+                  ? "bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/20 hover:bg-amber-400"
+                  : "bg-slate-800 text-amber-300 border-amber-500/40 hover:bg-slate-700 hover:border-amber-400"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              {isPe2Nptel ? "✓ NPTEL Selected (Switch Back)" : "🎓 Replace PE-II with NPTEL"}
+              {isPe2Nptel ? "✓ NPTEL Active (Switch Back)" : "+ Replace PE-II with NPTEL"}
             </button>
           </div>
 
           {isPe2Nptel ? (
             /* NPTEL Replacement Mode for PE-II */
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in duration-200">
               <label htmlFor="nptel_pe2_course" className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
                 <BookOpen className="w-4 h-4 text-amber-400" />
                 NPTEL Course Name for PE-II
@@ -601,14 +581,13 @@ export default function RegistrationForm() {
                 value={form.nptel_pe2_course}
                 onChange={(e) => handleChange("nptel_pe2_course", e.target.value)}
                 disabled={submitting}
-                className="bg-slate-900/80 border-amber-500/30 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs"
+                className="bg-slate-900 border-amber-500/40 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs font-medium"
               />
               {fieldErrors.nptel_pe2_course && (
                 <p className="text-xs text-red-400 mt-1">{fieldErrors.nptel_pe2_course}</p>
               )}
-              <p className="text-[11px] text-amber-200/80 leading-relaxed flex items-center gap-1 mt-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                Physical PE-II course selection is hidden while NPTEL replacement is active.
+              <p className="text-[11px] text-amber-200/80 leading-relaxed mt-1">
+                Standard PE-II elective choices are hidden while NPTEL course replacement is active.
               </p>
             </div>
           ) : (
@@ -664,7 +643,7 @@ export default function RegistrationForm() {
               <div>
                 <h3 className="text-base font-semibold text-purple-300">Professional Elective III Choices</h3>
                 <p className="text-xs text-slate-400">
-                  {isPe3Nptel ? "NPTEL Course Replacement Mode Active" : "Select 3 courses in order of preference"}
+                  {isPe3Nptel ? "NPTEL Course Replacement Active" : "Select 3 courses in order of preference"}
                 </p>
               </div>
             </div>
@@ -682,20 +661,19 @@ export default function RegistrationForm() {
                   setFieldErrors((prev) => ({ ...prev, nptel_pe3_course: undefined }));
                 }
               }}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+              className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all border cursor-pointer select-none ${
                 isPe3Nptel
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
-                  : "bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20"
+                  ? "bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/20 hover:bg-amber-400"
+                  : "bg-slate-800 text-amber-300 border-amber-500/40 hover:bg-slate-700 hover:border-amber-400"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              {isPe3Nptel ? "✓ NPTEL Selected (Switch Back)" : "🎓 Replace PE-III with NPTEL"}
+              {isPe3Nptel ? "✓ NPTEL Active (Switch Back)" : "+ Replace PE-III with NPTEL"}
             </button>
           </div>
 
           {isPe3Nptel ? (
             /* NPTEL Replacement Mode for PE-III */
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in duration-200">
               <label htmlFor="nptel_pe3_course" className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
                 <BookMarked className="w-4 h-4 text-amber-400" />
                 NPTEL Course Name for PE-III
@@ -707,14 +685,13 @@ export default function RegistrationForm() {
                 value={form.nptel_pe3_course}
                 onChange={(e) => handleChange("nptel_pe3_course", e.target.value)}
                 disabled={submitting}
-                className="bg-slate-900/80 border-amber-500/30 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs"
+                className="bg-slate-900 border-amber-500/40 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs font-medium"
               />
               {fieldErrors.nptel_pe3_course && (
                 <p className="text-xs text-red-400 mt-1">{fieldErrors.nptel_pe3_course}</p>
               )}
-              <p className="text-[11px] text-amber-200/80 leading-relaxed flex items-center gap-1 mt-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                Physical PE-III course selection is hidden while NPTEL replacement is active.
+              <p className="text-[11px] text-amber-200/80 leading-relaxed mt-1">
+                Standard PE-III elective choices are hidden while NPTEL course replacement is active.
               </p>
             </div>
           ) : (
