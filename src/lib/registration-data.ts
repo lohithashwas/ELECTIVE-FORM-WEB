@@ -28,8 +28,8 @@ export interface RegistrationDetails {
 }
 
 export async function getRegistrationByRoll(rollNumber: string): Promise<RegistrationDetails | null> {
-  const normalized = rollNumber?.trim().toUpperCase();
-  if (!normalized) return null;
+  const raw = rollNumber?.trim() || "";
+  if (!raw) return null;
 
   // 1. Fetch portal_settings to see if results are published
   let resultsPublished = false;
@@ -62,20 +62,16 @@ export async function getRegistrationByRoll(rollNumber: string): Promise<Registr
     pe3_subject:pe3_subject_id ( subject_code, subject_name )
   `;
 
+  const normalized = raw.toUpperCase();
+  const digitsOnly = raw.replace(/\D/g, "");
+  const last3 = digitsOnly.length >= 3 ? digitsOnly.slice(-3) : digitsOnly;
+  const fullReg = `2127240701${last3}`;
+
   let result = await supabaseAdmin
     .from("registrations")
     .select(selectQuery)
-    .eq("roll_number", normalized)
+    .or(`roll_number.eq.${fullReg},roll_number.eq.${normalized},roll_number.eq.${last3}`)
     .maybeSingle();
-
-  // Fallback: try lowercase version
-  if (!result.data && normalized !== normalized.toLowerCase()) {
-    result = await supabaseAdmin
-      .from("registrations")
-      .select(selectQuery)
-      .eq("roll_number", normalized.toLowerCase())
-      .maybeSingle();
-  }
 
   const { data, error } = result;
 

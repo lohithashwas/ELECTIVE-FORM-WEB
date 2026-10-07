@@ -14,6 +14,8 @@ import {
   AlertCircle,
   BookMarked,
   Award,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 import AlreadyRegistered from "./AlreadyRegistered";
 import { Button } from "@/components/ui/button";
@@ -55,9 +57,11 @@ interface FieldError {
   pe2_p1_id?: string;
   pe2_p2_id?: string;
   pe2_p3_id?: string;
+  nptel_pe2_course?: string;
   pe3_p1_id?: string;
   pe3_p2_id?: string;
   pe3_p3_id?: string;
+  nptel_pe3_course?: string;
 }
 
 export default function RegistrationForm() {
@@ -65,6 +69,9 @@ export default function RegistrationForm() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [subjectError, setSubjectError] = useState(false);
+
+  const [isPe2Nptel, setIsPe2Nptel] = useState(false);
+  const [isPe3Nptel, setIsPe3Nptel] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     student_name: "",
@@ -86,9 +93,56 @@ export default function RegistrationForm() {
   const [submitting, setSubmitting] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [localSuccessData, setLocalSuccessData] = useState<any>(null);
-  const [checkingExisting, setCheckingExisting] = useState(false);
+  const [checkingExisting, setCheckingExisting] = useState(true);
 
-  // Fetch subjects (excluding replacement options)
+  // 1. Session check & auto-fill / already-registered check
+  useEffect(() => {
+    let isMounted = true;
+    async function checkSessionAndRegistration() {
+      try {
+        setCheckingExisting(true);
+        const res = await fetch("/api/session", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!isMounted) return;
+
+          if (data.authenticated) {
+            if (data.registered && data.registration) {
+              setLocalSuccessData(data.registration);
+              return;
+            }
+
+            // Autofill student data from active session
+            if (data.student_name) {
+              setForm((prev) => ({
+                ...prev,
+                student_name: prev.student_name || data.student_name,
+              }));
+            }
+            if (data.reg_number) {
+              const digitsOnly = data.reg_number.replace(/\D/g, "");
+              const last3 = digitsOnly.slice(-3);
+              setForm((prev) => ({
+                ...prev,
+                registration_number: prev.registration_number || last3,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Session check failed:", err);
+      } finally {
+        if (isMounted) setCheckingExisting(false);
+      }
+    }
+
+    checkSessionAndRegistration();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // 2. Fetch subjects
   const fetchSubjects = useCallback(async () => {
     try {
       const res = await fetch("/api/subjects", { cache: "no-store" });
@@ -159,56 +213,70 @@ export default function RegistrationForm() {
       valid = false;
     }
 
-    // PE-II Priorities Validation
-    if (!form.pe2_p1_id) {
-      errors.pe2_p1_id = "Please select Priority 1 for PE-II";
-      valid = false;
-    }
-    if (!form.pe2_p2_id) {
-      errors.pe2_p2_id = "Please select Priority 2 for PE-II";
-      valid = false;
-    }
-    if (!form.pe2_p3_id) {
-      errors.pe2_p3_id = "Please select Priority 3 for PE-II";
-      valid = false;
+    // PE-II Validation
+    if (isPe2Nptel) {
+      if (!form.nptel_pe2_course.trim()) {
+        errors.nptel_pe2_course = "Please enter your NPTEL course name for PE-II";
+        valid = false;
+      }
+    } else {
+      if (!form.pe2_p1_id) {
+        errors.pe2_p1_id = "Please select Priority 1 for PE-II";
+        valid = false;
+      }
+      if (!form.pe2_p2_id) {
+        errors.pe2_p2_id = "Please select Priority 2 for PE-II";
+        valid = false;
+      }
+      if (!form.pe2_p3_id) {
+        errors.pe2_p3_id = "Please select Priority 3 for PE-II";
+        valid = false;
+      }
+
+      if (form.pe2_p1_id && form.pe2_p2_id && form.pe2_p1_id === form.pe2_p2_id) {
+        errors.pe2_p2_id = "Priority 2 must be different from Priority 1";
+        valid = false;
+      }
+      if (
+        form.pe2_p3_id &&
+        (form.pe2_p3_id === form.pe2_p1_id || form.pe2_p3_id === form.pe2_p2_id)
+      ) {
+        errors.pe2_p3_id = "Priority 3 must be different from Priority 1 & 2";
+        valid = false;
+      }
     }
 
-    if (form.pe2_p1_id && form.pe2_p2_id && form.pe2_p1_id === form.pe2_p2_id) {
-      errors.pe2_p2_id = "Priority 2 must be different from Priority 1";
-      valid = false;
-    }
-    if (
-      form.pe2_p3_id &&
-      (form.pe2_p3_id === form.pe2_p1_id || form.pe2_p3_id === form.pe2_p2_id)
-    ) {
-      errors.pe2_p3_id = "Priority 3 must be different from Priority 1 & 2";
-      valid = false;
-    }
+    // PE-III Validation
+    if (isPe3Nptel) {
+      if (!form.nptel_pe3_course.trim()) {
+        errors.nptel_pe3_course = "Please enter your NPTEL course name for PE-III";
+        valid = false;
+      }
+    } else {
+      if (!form.pe3_p1_id) {
+        errors.pe3_p1_id = "Please select Priority 1 for PE-III";
+        valid = false;
+      }
+      if (!form.pe3_p2_id) {
+        errors.pe3_p2_id = "Please select Priority 2 for PE-III";
+        valid = false;
+      }
+      if (!form.pe3_p3_id) {
+        errors.pe3_p3_id = "Please select Priority 3 for PE-III";
+        valid = false;
+      }
 
-    // PE-III Priorities Validation
-    if (!form.pe3_p1_id) {
-      errors.pe3_p1_id = "Please select Priority 1 for PE-III";
-      valid = false;
-    }
-    if (!form.pe3_p2_id) {
-      errors.pe3_p2_id = "Please select Priority 2 for PE-III";
-      valid = false;
-    }
-    if (!form.pe3_p3_id) {
-      errors.pe3_p3_id = "Please select Priority 3 for PE-III";
-      valid = false;
-    }
-
-    if (form.pe3_p1_id && form.pe3_p2_id && form.pe3_p1_id === form.pe3_p2_id) {
-      errors.pe3_p2_id = "Priority 2 must be different from Priority 1";
-      valid = false;
-    }
-    if (
-      form.pe3_p3_id &&
-      (form.pe3_p3_id === form.pe3_p1_id || form.pe3_p3_id === form.pe3_p2_id)
-    ) {
-      errors.pe3_p3_id = "Priority 3 must be different from Priority 1 & 2";
-      valid = false;
+      if (form.pe3_p1_id && form.pe3_p2_id && form.pe3_p1_id === form.pe3_p2_id) {
+        errors.pe3_p2_id = "Priority 2 must be different from Priority 1";
+        valid = false;
+      }
+      if (
+        form.pe3_p3_id &&
+        (form.pe3_p3_id === form.pe3_p1_id || form.pe3_p3_id === form.pe3_p2_id)
+      ) {
+        errors.pe3_p3_id = "Priority 3 must be different from Priority 1 & 2";
+        valid = false;
+      }
     }
 
     setFieldErrors(errors);
@@ -223,28 +291,34 @@ export default function RegistrationForm() {
 
     setSubmitting(true);
     setFieldErrors({});
-    setCheckingExisting(true);
 
     try {
+      // 1. Check if already registered
       const existingRes = await fetch(`/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`);
       const existingData = await existingRes.json();
 
       if (existingData?.success && existingData?.registration) {
         setLocalSuccessData(existingData.registration);
         setSubmitting(false);
-        setCheckingExisting(false);
         return;
       }
     } catch {
-      // Continue with registration flow
+      // Continue
     }
 
     const payload = {
       ...form,
       roll_number: rollNumber,
       phone_number: form.phone_number.trim(),
-      nptel_pe2_course: form.nptel_pe2_course.trim(),
-      nptel_pe3_course: form.nptel_pe3_course.trim(),
+      pe2_p1_id: isPe2Nptel ? "" : form.pe2_p1_id,
+      pe2_p2_id: isPe2Nptel ? "" : form.pe2_p2_id,
+      pe2_p3_id: isPe2Nptel ? "" : form.pe2_p3_id,
+      nptel_pe2_course: isPe2Nptel ? form.nptel_pe2_course.trim() : "",
+
+      pe3_p1_id: isPe3Nptel ? "" : form.pe3_p1_id,
+      pe3_p2_id: isPe3Nptel ? "" : form.pe3_p2_id,
+      pe3_p3_id: isPe3Nptel ? "" : form.pe3_p3_id,
+      nptel_pe3_course: isPe3Nptel ? form.nptel_pe3_course.trim() : "",
     };
 
     try {
@@ -258,7 +332,7 @@ export default function RegistrationForm() {
 
       if (res.ok) {
         toast.success("Registration Submitted!", {
-          description: "Your subject priorities have been submitted successfully.",
+          description: "Your elective options have been recorded successfully.",
         });
 
         const findSubj = (id: string) => subjects.find((s) => s.id === id);
@@ -289,6 +363,8 @@ export default function RegistrationForm() {
           pe3_allotted: null,
           pe2_subject: pe2P1 ? { subject_code: pe2P1.subject_code, subject_name: pe2P1.subject_name } : null,
           pe3_subject: pe3P1 ? { subject_code: pe3P1.subject_code, subject_name: pe3P1.subject_name } : null,
+          nptel_pe2_course: payload.nptel_pe2_course || null,
+          nptel_pe3_course: payload.nptel_pe3_course || null,
         });
 
         setSubmitting(false);
@@ -313,12 +389,10 @@ export default function RegistrationForm() {
 
         fetchSubjects();
         setSubmitting(false);
-        setCheckingExisting(false);
       }
     } catch {
       toast.error("Network error. Please check your connection and try again.");
       setSubmitting(false);
-      setCheckingExisting(false);
     }
   };
 
@@ -329,12 +403,21 @@ export default function RegistrationForm() {
     }
   };
 
+  if (checkingExisting) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        <p className="text-slate-300 text-sm font-medium">Verifying registration status...</p>
+      </div>
+    );
+  }
+
   if (localSuccessData) {
     return <AlreadyRegistered data={localSuccessData} />;
   }
 
   const allSubjectsLoaded = !loadingSubjects && !subjectError;
-  const canSubmit = allSubjectsLoaded && !submitting && !checkingExisting;
+  const canSubmit = allSubjectsLoaded && !submitting;
 
   return (
     <div className="w-full">
@@ -354,7 +437,7 @@ export default function RegistrationForm() {
           Professional Elective Registration
         </h1>
         <p className="text-slate-400 text-sm sm:text-base">
-          Fill your top <span className="text-blue-400 font-medium">3 Priorities for PE-II</span> and <span className="text-purple-400 font-medium">3 Priorities for PE-III</span>
+          Fill your choices for <span className="text-blue-400 font-medium">PE-II</span> and <span className="text-purple-400 font-medium">PE-III</span>
         </p>
       </div>
 
@@ -467,155 +550,227 @@ export default function RegistrationForm() {
           </FormField>
         </div>
 
-        {/* ── PE-II Priorities ── */}
+        {/* ── PE-II Section ── */}
         <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-blue-500/20 pb-3">
-            <BookOpen className="w-5 h-5 text-blue-400" />
-            <div>
-              <h3 className="text-base font-semibold text-blue-300">Professional Elective II Choices</h3>
-              <p className="text-xs text-slate-400">Select 3 courses in order of preference</p>
+          <div className="flex items-center justify-between border-b border-blue-500/20 pb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-400 shrink-0" />
+              <div>
+                <h3 className="text-base font-semibold text-blue-300">Professional Elective II Choices</h3>
+                <p className="text-xs text-slate-400">
+                  {isPe2Nptel ? "NPTEL Course Replacement Mode Active" : "Select 3 courses in order of preference"}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const nextState = !isPe2Nptel;
+                setIsPe2Nptel(nextState);
+                if (nextState) {
+                  setForm((prev) => ({ ...prev, pe2_p1_id: "", pe2_p2_id: "", pe2_p3_id: "" }));
+                  setFieldErrors((prev) => ({ ...prev, pe2_p1_id: undefined, pe2_p2_id: undefined, pe2_p3_id: undefined }));
+                } else {
+                  setForm((prev) => ({ ...prev, nptel_pe2_course: "" }));
+                  setFieldErrors((prev) => ({ ...prev, nptel_pe2_course: undefined }));
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+                isPe2Nptel
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+                  : "bg-blue-500/10 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {isPe2Nptel ? "✓ NPTEL Selected (Switch Back)" : "🎓 Replace PE-II with NPTEL"}
+            </button>
           </div>
 
-          <PrioritySelector
-            id="pe2_p1_id"
-            label="Priority 1 (PE-II)"
-            icon={<Award className="w-4 h-4 text-blue-400" />}
-            value={form.pe2_p1_id}
-            onChange={(v) => handleChange("pe2_p1_id", v)}
-            subjects={pe2Subjects}
-            error={fieldErrors.pe2_p1_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
+          {isPe2Nptel ? (
+            /* NPTEL Replacement Mode for PE-II */
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-200">
+              <label htmlFor="nptel_pe2_course" className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                NPTEL Course Name for PE-II
+                <span className="text-red-400 ml-0.5">*</span>
+              </label>
+              <Input
+                id="nptel_pe2_course"
+                placeholder="e.g. Deep Learning — NPTEL IIT Madras"
+                value={form.nptel_pe2_course}
+                onChange={(e) => handleChange("nptel_pe2_course", e.target.value)}
+                disabled={submitting}
+                className="bg-slate-900/80 border-amber-500/30 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs"
+              />
+              {fieldErrors.nptel_pe2_course && (
+                <p className="text-xs text-red-400 mt-1">{fieldErrors.nptel_pe2_course}</p>
+              )}
+              <p className="text-[11px] text-amber-200/80 leading-relaxed flex items-center gap-1 mt-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                Physical PE-II course selection is hidden while NPTEL replacement is active.
+              </p>
+            </div>
+          ) : (
+            /* Standard Priority Selectors for PE-II */
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <PrioritySelector
+                id="pe2_p1_id"
+                label="Priority 1 (PE-II)"
+                icon={<Award className="w-4 h-4 text-blue-400" />}
+                value={form.pe2_p1_id}
+                onChange={(v) => handleChange("pe2_p1_id", v)}
+                subjects={pe2Subjects}
+                error={fieldErrors.pe2_p1_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
 
-          <PrioritySelector
-            id="pe2_p2_id"
-            label="Priority 2 (PE-II)"
-            icon={<Award className="w-4 h-4 text-blue-400/80" />}
-            value={form.pe2_p2_id}
-            onChange={(v) => handleChange("pe2_p2_id", v)}
-            subjects={pe2Subjects}
-            error={fieldErrors.pe2_p2_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
+              <PrioritySelector
+                id="pe2_p2_id"
+                label="Priority 2 (PE-II)"
+                icon={<Award className="w-4 h-4 text-blue-400/80" />}
+                value={form.pe2_p2_id}
+                onChange={(v) => handleChange("pe2_p2_id", v)}
+                subjects={pe2Subjects}
+                error={fieldErrors.pe2_p2_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
 
-          <PrioritySelector
-            id="pe2_p3_id"
-            label="Priority 3 (PE-II)"
-            icon={<Award className="w-4 h-4 text-blue-400/60" />}
-            value={form.pe2_p3_id}
-            onChange={(v) => handleChange("pe2_p3_id", v)}
-            subjects={pe2Subjects}
-            error={fieldErrors.pe2_p3_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
-
-          {/* NPTEL Replacement for PE-II */}
-          <div className="space-y-1.5 pt-1">
-            <label htmlFor="nptel_pe2_course" className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
-              NPTEL Course Replacement for PE-II
-              <span className="ml-1 text-slate-600 font-normal">(Optional)</span>
-            </label>
-            <Input
-              id="nptel_pe2_course"
-              placeholder="e.g. Deep Learning — NPTEL IIT Madras"
-              value={form.nptel_pe2_course}
-              onChange={(e) => handleChange("nptel_pe2_course", e.target.value)}
-              disabled={submitting}
-              className="text-xs"
-            />
-            <p className="text-[10px] text-slate-500 leading-relaxed">
-              If you wish to replace PE-II with an NPTEL course, enter the course name here. Leave blank if not applicable.
-            </p>
-          </div>
+              <PrioritySelector
+                id="pe2_p3_id"
+                label="Priority 3 (PE-II)"
+                icon={<Award className="w-4 h-4 text-blue-400/60" />}
+                value={form.pe2_p3_id}
+                onChange={(v) => handleChange("pe2_p3_id", v)}
+                subjects={pe2Subjects}
+                error={fieldErrors.pe2_p3_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
+            </div>
+          )}
         </div>
 
-        {/* ── PE-III Priorities ── */}
+        {/* ── PE-III Section ── */}
         <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
-          <div className="flex items-center gap-2 border-b border-purple-500/20 pb-3">
-            <BookMarked className="w-5 h-5 text-purple-400" />
-            <div>
-              <h3 className="text-base font-semibold text-purple-300">Professional Elective III Choices</h3>
-              <p className="text-xs text-slate-400">Select 3 courses in order of preference</p>
+          <div className="flex items-center justify-between border-b border-purple-500/20 pb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <BookMarked className="w-5 h-5 text-purple-400 shrink-0" />
+              <div>
+                <h3 className="text-base font-semibold text-purple-300">Professional Elective III Choices</h3>
+                <p className="text-xs text-slate-400">
+                  {isPe3Nptel ? "NPTEL Course Replacement Mode Active" : "Select 3 courses in order of preference"}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const nextState = !isPe3Nptel;
+                setIsPe3Nptel(nextState);
+                if (nextState) {
+                  setForm((prev) => ({ ...prev, pe3_p1_id: "", pe3_p2_id: "", pe3_p3_id: "" }));
+                  setFieldErrors((prev) => ({ ...prev, pe3_p1_id: undefined, pe3_p2_id: undefined, pe3_p3_id: undefined }));
+                } else {
+                  setForm((prev) => ({ ...prev, nptel_pe3_course: "" }));
+                  setFieldErrors((prev) => ({ ...prev, nptel_pe3_course: undefined }));
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+                isPe3Nptel
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
+                  : "bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {isPe3Nptel ? "✓ NPTEL Selected (Switch Back)" : "🎓 Replace PE-III with NPTEL"}
+            </button>
           </div>
 
-          <PrioritySelector
-            id="pe3_p1_id"
-            label="Priority 1 (PE-III)"
-            icon={<Award className="w-4 h-4 text-purple-400" />}
-            value={form.pe3_p1_id}
-            onChange={(v) => handleChange("pe3_p1_id", v)}
-            subjects={pe3Subjects}
-            error={fieldErrors.pe3_p1_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
+          {isPe3Nptel ? (
+            /* NPTEL Replacement Mode for PE-III */
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-in fade-in zoom-in-95 duration-200">
+              <label htmlFor="nptel_pe3_course" className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
+                <BookMarked className="w-4 h-4 text-amber-400" />
+                NPTEL Course Name for PE-III
+                <span className="text-red-400 ml-0.5">*</span>
+              </label>
+              <Input
+                id="nptel_pe3_course"
+                placeholder="e.g. Computer Vision — NPTEL IIT Kharagpur"
+                value={form.nptel_pe3_course}
+                onChange={(e) => handleChange("nptel_pe3_course", e.target.value)}
+                disabled={submitting}
+                className="bg-slate-900/80 border-amber-500/30 text-white placeholder:text-slate-500 focus:border-amber-400 text-xs"
+              />
+              {fieldErrors.nptel_pe3_course && (
+                <p className="text-xs text-red-400 mt-1">{fieldErrors.nptel_pe3_course}</p>
+              )}
+              <p className="text-[11px] text-amber-200/80 leading-relaxed flex items-center gap-1 mt-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                Physical PE-III course selection is hidden while NPTEL replacement is active.
+              </p>
+            </div>
+          ) : (
+            /* Standard Priority Selectors for PE-III */
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <PrioritySelector
+                id="pe3_p1_id"
+                label="Priority 1 (PE-III)"
+                icon={<Award className="w-4 h-4 text-purple-400" />}
+                value={form.pe3_p1_id}
+                onChange={(v) => handleChange("pe3_p1_id", v)}
+                subjects={pe3Subjects}
+                error={fieldErrors.pe3_p1_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
 
-          <PrioritySelector
-            id="pe3_p2_id"
-            label="Priority 2 (PE-III)"
-            icon={<Award className="w-4 h-4 text-purple-400/80" />}
-            value={form.pe3_p2_id}
-            onChange={(v) => handleChange("pe3_p2_id", v)}
-            subjects={pe3Subjects}
-            error={fieldErrors.pe3_p2_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
+              <PrioritySelector
+                id="pe3_p2_id"
+                label="Priority 2 (PE-III)"
+                icon={<Award className="w-4 h-4 text-purple-400/80" />}
+                value={form.pe3_p2_id}
+                onChange={(v) => handleChange("pe3_p2_id", v)}
+                subjects={pe3Subjects}
+                error={fieldErrors.pe3_p2_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
 
-          <PrioritySelector
-            id="pe3_p3_id"
-            label="Priority 3 (PE-III)"
-            icon={<Award className="w-4 h-4 text-purple-400/60" />}
-            value={form.pe3_p3_id}
-            onChange={(v) => handleChange("pe3_p3_id", v)}
-            subjects={pe3Subjects}
-            error={fieldErrors.pe3_p3_id}
-            disabled={submitting}
-            loading={loadingSubjects}
-            errorState={subjectError}
-          />
-
-          {/* NPTEL Replacement for PE-III */}
-          <div className="space-y-1.5 pt-1">
-            <label htmlFor="nptel_pe3_course" className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
-              <BookMarked className="w-3.5 h-3.5 text-slate-500" />
-              NPTEL Course Replacement for PE-III
-              <span className="ml-1 text-slate-600 font-normal">(Optional)</span>
-            </label>
-            <Input
-              id="nptel_pe3_course"
-              placeholder="e.g. Computer Vision — NPTEL IIT Kharagpur"
-              value={form.nptel_pe3_course}
-              onChange={(e) => handleChange("nptel_pe3_course", e.target.value)}
-              disabled={submitting}
-              className="text-xs"
-            />
-            <p className="text-[10px] text-slate-500 leading-relaxed">
-              If you wish to replace PE-III with an NPTEL course, enter the course name here. Leave blank if not applicable.
-            </p>
-          </div>
+              <PrioritySelector
+                id="pe3_p3_id"
+                label="Priority 3 (PE-III)"
+                icon={<Award className="w-4 h-4 text-purple-400/60" />}
+                value={form.pe3_p3_id}
+                onChange={(v) => handleChange("pe3_p3_id", v)}
+                subjects={pe3Subjects}
+                error={fieldErrors.pe3_p3_id}
+                disabled={submitting}
+                loading={loadingSubjects}
+                errorState={subjectError}
+              />
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}
         <div className="pt-2">
           <Button
             type="submit"
-            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25"
+            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-500/25 cursor-pointer"
             disabled={!canSubmit}
             id="submit-registration"
           >
-            {submitting || checkingExisting ? (
+            {submitting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Submitting Options...

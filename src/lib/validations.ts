@@ -40,13 +40,13 @@ export const registrationSchema = z.object({
       `Email must end with ${COLLEGE_EMAIL_DOMAIN}`
     ),
 
-  pe2_p1_id: z.string().uuid("Please select PE-II Priority 1"),
-  pe2_p2_id: z.string().uuid("Please select PE-II Priority 2"),
-  pe2_p3_id: z.string().uuid("Please select PE-II Priority 3"),
+  pe2_p1_id: z.string().optional().nullable().or(z.literal("")),
+  pe2_p2_id: z.string().optional().nullable().or(z.literal("")),
+  pe2_p3_id: z.string().optional().nullable().or(z.literal("")),
 
-  pe3_p1_id: z.string().uuid("Please select PE-III Priority 1"),
-  pe3_p2_id: z.string().uuid("Please select PE-III Priority 2"),
-  pe3_p3_id: z.string().uuid("Please select PE-III Priority 3"),
+  pe3_p1_id: z.string().optional().nullable().or(z.literal("")),
+  pe3_p2_id: z.string().optional().nullable().or(z.literal("")),
+  pe3_p3_id: z.string().optional().nullable().or(z.literal("")),
 
   // Optional NPTEL replacement fields
   nptel_pe2_course: z.string().max(200).optional().default(""),

@@ -177,17 +177,23 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
               <BookOpen className="w-4 h-4" />
               Your Submitted Choices for PE-II
             </h3>
-            <div className="space-y-3">
-              <PriorityRow label="Priority 1" subject={data.pe2_p1 || data.pe2_subject} highlight />
-              <PriorityRow label="Priority 2" subject={data.pe2_p2} />
-              <PriorityRow label="Priority 3" subject={data.pe2_p3} />
-              {data.nptel_pe2_course && (
-                <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md text-amber-300 bg-amber-500/20 whitespace-nowrap">NPTEL</span>
-                  <span className="text-xs text-amber-200 font-medium">{data.nptel_pe2_course}</span>
+            {data.nptel_pe2_course ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                <Award className="w-5 h-5 text-amber-400 shrink-0" />
+                <div>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded text-amber-300 bg-amber-500/30 uppercase tracking-wider block w-max mb-1">
+                    🎓 NPTEL Course Replacement
+                  </span>
+                  <span className="text-sm text-white font-semibold">{data.nptel_pe2_course}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <PriorityRow label="Priority 1" subject={data.pe2_p1 || data.pe2_subject} highlight />
+                <PriorityRow label="Priority 2" subject={data.pe2_p2} />
+                <PriorityRow label="Priority 3" subject={data.pe2_p3} />
+              </div>
+            )}
           </div>
 
           {/* PE-III Choices */}
@@ -196,17 +202,23 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
               <BookMarked className="w-4 h-4" />
               Your Submitted Choices for PE-III
             </h3>
-            <div className="space-y-3">
-              <PriorityRow label="Priority 1" subject={data.pe3_p1 || data.pe3_subject} highlight accent="purple" />
-              <PriorityRow label="Priority 2" subject={data.pe3_p2} accent="purple" />
-              <PriorityRow label="Priority 3" subject={data.pe3_p3} accent="purple" />
-              {data.nptel_pe3_course && (
-                <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md text-amber-300 bg-amber-500/20 whitespace-nowrap">NPTEL</span>
-                  <span className="text-xs text-amber-200 font-medium">{data.nptel_pe3_course}</span>
+            {data.nptel_pe3_course ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10">
+                <Award className="w-5 h-5 text-amber-400 shrink-0" />
+                <div>
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded text-amber-300 bg-amber-500/30 uppercase tracking-wider block w-max mb-1">
+                    🎓 NPTEL Course Replacement
+                  </span>
+                  <span className="text-sm text-white font-semibold">{data.nptel_pe3_course}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <PriorityRow label="Priority 1" subject={data.pe3_p1 || data.pe3_subject} highlight accent="purple" />
+                <PriorityRow label="Priority 2" subject={data.pe3_p2} accent="purple" />
+                <PriorityRow label="Priority 3" subject={data.pe3_p3} accent="purple" />
+              </div>
+            )}
           </div>
         </div>
       )}
