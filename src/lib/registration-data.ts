@@ -23,6 +23,8 @@ export interface RegistrationDetails {
   pe3_allotted: SubjectDetail | null;
   pe2_subject: SubjectDetail | null; // fallback / allotted
   pe3_subject: SubjectDetail | null; // fallback / allotted
+  nptel_pe2_course?: string | null;
+  nptel_pe3_course?: string | null;
 }
 
 export async function getRegistrationByRoll(rollNumber: string): Promise<RegistrationDetails | null> {
@@ -47,6 +49,7 @@ export async function getRegistrationByRoll(rollNumber: string): Promise<Registr
   // 2. Query registration details with joins
   const selectQuery = `
     student_name, roll_number, phone_number, section, college_email, registered_at,
+    nptel_pe2_course, nptel_pe3_course,
     pe2_p1:pe2_p1_id ( subject_code, subject_name ),
     pe2_p2:pe2_p2_id ( subject_code, subject_name ),
     pe2_p3:pe2_p3_id ( subject_code, subject_name ),
@@ -119,5 +122,7 @@ export async function getRegistrationByRoll(rollNumber: string): Promise<Registr
     pe3_allotted: pe3Allotted,
     pe2_subject: pe2Allotted || pe2P1,
     pe3_subject: pe3Allotted || pe3P1,
+    nptel_pe2_course: row.nptel_pe2_course || null,
+    nptel_pe3_course: row.nptel_pe3_course || null,
   };
 }

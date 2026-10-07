@@ -39,9 +39,11 @@ interface FormState {
   pe2_p1_id: string;
   pe2_p2_id: string;
   pe2_p3_id: string;
+  nptel_pe2_course: string;
   pe3_p1_id: string;
   pe3_p2_id: string;
   pe3_p3_id: string;
+  nptel_pe3_course: string;
 }
 
 interface FieldError {
@@ -73,9 +75,11 @@ export default function RegistrationForm() {
     pe2_p1_id: "",
     pe2_p2_id: "",
     pe2_p3_id: "",
+    nptel_pe2_course: "",
     pe3_p1_id: "",
     pe3_p2_id: "",
     pe3_p3_id: "",
+    nptel_pe3_course: "",
   });
 
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
@@ -239,6 +243,8 @@ export default function RegistrationForm() {
       ...form,
       roll_number: rollNumber,
       phone_number: form.phone_number.trim(),
+      nptel_pe2_course: form.nptel_pe2_course.trim(),
+      nptel_pe3_course: form.nptel_pe3_course.trim(),
     };
 
     try {
@@ -509,6 +515,26 @@ export default function RegistrationForm() {
             loading={loadingSubjects}
             errorState={subjectError}
           />
+
+          {/* NPTEL Replacement for PE-II */}
+          <div className="space-y-1.5 pt-1">
+            <label htmlFor="nptel_pe2_course" className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+              NPTEL Course Replacement for PE-II
+              <span className="ml-1 text-slate-600 font-normal">(Optional)</span>
+            </label>
+            <Input
+              id="nptel_pe2_course"
+              placeholder="e.g. Deep Learning — NPTEL IIT Madras"
+              value={form.nptel_pe2_course}
+              onChange={(e) => handleChange("nptel_pe2_course", e.target.value)}
+              disabled={submitting}
+              className="text-xs"
+            />
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              If you wish to replace PE-II with an NPTEL course, enter the course name here. Leave blank if not applicable.
+            </p>
+          </div>
         </div>
 
         {/* ── PE-III Priorities ── */}
@@ -559,6 +585,26 @@ export default function RegistrationForm() {
             loading={loadingSubjects}
             errorState={subjectError}
           />
+
+          {/* NPTEL Replacement for PE-III */}
+          <div className="space-y-1.5 pt-1">
+            <label htmlFor="nptel_pe3_course" className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+              <BookMarked className="w-3.5 h-3.5 text-slate-500" />
+              NPTEL Course Replacement for PE-III
+              <span className="ml-1 text-slate-600 font-normal">(Optional)</span>
+            </label>
+            <Input
+              id="nptel_pe3_course"
+              placeholder="e.g. Computer Vision — NPTEL IIT Kharagpur"
+              value={form.nptel_pe3_course}
+              onChange={(e) => handleChange("nptel_pe3_course", e.target.value)}
+              disabled={submitting}
+              className="text-xs"
+            />
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              If you wish to replace PE-III with an NPTEL course, enter the course name here. Leave blank if not applicable.
+            </p>
+          </div>
         </div>
 
         {/* Submit Button */}

@@ -47,6 +47,10 @@ export const registrationSchema = z.object({
   pe3_p1_id: z.string().uuid("Please select PE-III Priority 1"),
   pe3_p2_id: z.string().uuid("Please select PE-III Priority 2"),
   pe3_p3_id: z.string().uuid("Please select PE-III Priority 3"),
+
+  // Optional NPTEL replacement fields
+  nptel_pe2_course: z.string().max(200).optional().default(""),
+  nptel_pe3_course: z.string().max(200).optional().default(""),
 });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
@@ -78,4 +82,6 @@ export interface Registration {
   pe3_allotted_id?: string | null;
   is_allotted?: boolean;
   registered_at: string;
+  nptel_pe2_course?: string | null;
+  nptel_pe3_course?: string | null;
 }

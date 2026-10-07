@@ -39,6 +39,8 @@ interface RegistrationDetails {
   pe3_allotted?: SubjectDetail | null;
   pe2_subject?: SubjectDetail | null;
   pe3_subject?: SubjectDetail | null;
+  nptel_pe2_course?: string | null;
+  nptel_pe3_course?: string | null;
 }
 
 export default function AlreadyRegistered({ data }: { data: RegistrationDetails }) {
@@ -179,6 +181,12 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
               <PriorityRow label="Priority 1" subject={data.pe2_p1 || data.pe2_subject} highlight />
               <PriorityRow label="Priority 2" subject={data.pe2_p2} />
               <PriorityRow label="Priority 3" subject={data.pe2_p3} />
+              {data.nptel_pe2_course && (
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md text-amber-300 bg-amber-500/20 whitespace-nowrap">NPTEL</span>
+                  <span className="text-xs text-amber-200 font-medium">{data.nptel_pe2_course}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -192,6 +200,12 @@ export default function AlreadyRegistered({ data }: { data: RegistrationDetails 
               <PriorityRow label="Priority 1" subject={data.pe3_p1 || data.pe3_subject} highlight accent="purple" />
               <PriorityRow label="Priority 2" subject={data.pe3_p2} accent="purple" />
               <PriorityRow label="Priority 3" subject={data.pe3_p3} accent="purple" />
+              {data.nptel_pe3_course && (
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md text-amber-300 bg-amber-500/20 whitespace-nowrap">NPTEL</span>
+                  <span className="text-xs text-amber-200 font-medium">{data.nptel_pe3_course}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

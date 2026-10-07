@@ -41,21 +41,25 @@ export async function POST(request: NextRequest) {
       pe3_p1_id,
       pe3_p2_id,
       pe3_p3_id,
+      nptel_pe2_course,
+      nptel_pe3_course,
     } = parseResult.data;
 
     // 3. Use PostgreSQL stored procedure for atomic dual registration with priorities
     const { data, error } = await supabaseAdmin.rpc("register_student", {
-      p_student_name:  student_name,
-      p_roll_number:   roll_number,
-      p_phone_number:  phone_number,
-      p_section:       section,
-      p_college_email: college_email,
-      p_pe2_p1_id:     pe2_p1_id,
-      p_pe2_p2_id:     pe2_p2_id,
-      p_pe2_p3_id:     pe2_p3_id,
-      p_pe3_p1_id:     pe3_p1_id,
-      p_pe3_p2_id:     pe3_p2_id,
-      p_pe3_p3_id:     pe3_p3_id,
+      p_student_name:     student_name,
+      p_roll_number:      roll_number,
+      p_phone_number:     phone_number,
+      p_section:          section,
+      p_college_email:    college_email,
+      p_pe2_p1_id:        pe2_p1_id,
+      p_pe2_p2_id:        pe2_p2_id,
+      p_pe2_p3_id:        pe2_p3_id,
+      p_pe3_p1_id:        pe3_p1_id,
+      p_pe3_p2_id:        pe3_p2_id,
+      p_pe3_p3_id:        pe3_p3_id,
+      p_nptel_pe2_course: nptel_pe2_course ?? "",
+      p_nptel_pe3_course: nptel_pe3_course ?? "",
     });
 
     if (error) {
