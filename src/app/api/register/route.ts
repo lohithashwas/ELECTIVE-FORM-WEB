@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       const fieldErrors = parseResult.error.flatten().fieldErrors;
       const firstError = Object.values(fieldErrors).flat()[0];
+      console.error("Validation failed:", fieldErrors);
       return NextResponse.json(
         {
           error: firstError || "Please fill all required fields correctly.",
@@ -45,33 +46,73 @@ export async function POST(request: NextRequest) {
       nptel_pe3_course,
     } = parseResult.data;
 
-    // 3. Use PostgreSQL stored procedure for atomic dual registration with priorities
+    // 3. Convert empty string UUIDs to null (critical: empty string "" fails UUID type in Postgres)
+    const toUUID = (v: string | null | undefined): string | null => {
+      if (!v || v.trim() === "") return null;
+      return v.trim();
+    };
+
+    const pe2P1 = toUUID(pe2_p1_id);
+    const pe2P2 = toUUID(pe2_p2_id);
+    const pe2P3 = toUUID(pe2_p3_id);
+    const pe3P1 = toUUID(pe3_p1_id);
+    const pe3P2 = toUUID(pe3_p2_id);
+    const pe3P3 = toUUID(pe3_p3_id);
+    const nptelPe2 = nptel_pe2_course?.trim() ?? "";
+    const nptelPe3 = nptel_pe3_course?.trim() ?? "";
+
+    // 4. Server-side sanity: must have either NPTEL or 3 priority choices per elective
+    if (!nptelPe2 && (!pe2P1 || !pe2P2 || !pe2P3)) {
+      return NextResponse.json(
+        { error: "Please provide all 3 priority choices for PE-II, or enter an NPTEL course name." },
+        { status: 422 }
+      );
+    }
+    if (!nptelPe3 && (!pe3P1 || !pe3P2 || !pe3P3)) {
+      return NextResponse.json(
+        { error: "Please provide all 3 priority choices for PE-III, or enter an NPTEL course name." },
+        { status: 422 }
+      );
+    }
+
+    // 5. Log what we're about to save for debugging
+    console.log("Registering student:", {
+      roll_number,
+      student_name,
+      nptelPe2: nptelPe2 || "(none)",
+      nptelPe3: nptelPe3 || "(none)",
+      pe2P1, pe2P2, pe2P3,
+      pe3P1, pe3P2, pe3P3,
+    });
+
+    // 6. Call PostgreSQL stored procedure for atomic registration
     const { data, error } = await supabaseAdmin.rpc("register_student", {
       p_student_name:     student_name,
       p_roll_number:      roll_number,
       p_phone_number:     phone_number,
       p_section:          section,
       p_college_email:    college_email,
-      p_pe2_p1_id:        pe2_p1_id || null,
-      p_pe2_p2_id:        pe2_p2_id || null,
-      p_pe2_p3_id:        pe2_p3_id || null,
-      p_pe3_p1_id:        pe3_p1_id || null,
-      p_pe3_p2_id:        pe3_p2_id || null,
-      p_pe3_p3_id:        pe3_p3_id || null,
-      p_nptel_pe2_course: nptel_pe2_course ?? "",
-      p_nptel_pe3_course: nptel_pe3_course ?? "",
+      p_pe2_p1_id:        pe2P1,
+      p_pe2_p2_id:        pe2P2,
+      p_pe2_p3_id:        pe2P3,
+      p_pe3_p1_id:        pe3P1,
+      p_pe3_p2_id:        pe3P2,
+      p_pe3_p3_id:        pe3P3,
+      p_nptel_pe2_course: nptelPe2,
+      p_nptel_pe3_course: nptelPe3,
     });
 
     if (error) {
       const msg = error.message ?? "";
+      console.error("Registration RPC error:", error);
 
-      if (msg.includes("duplicate_roll")) {
+      if (msg.includes("duplicate_roll") || error.code === "23505" && msg.includes("roll_number")) {
         return NextResponse.json(
           { error: "This roll number has already registered." },
           { status: 409 }
         );
       }
-      if (msg.includes("duplicate_email")) {
+      if (msg.includes("duplicate_email") || error.code === "23505" && msg.includes("college_email")) {
         return NextResponse.json(
           { error: "This college email has already registered." },
           { status: 409 }
@@ -91,44 +132,42 @@ export async function POST(request: NextRequest) {
       }
       if (msg.includes("subject_not_found") || msg.includes("pe2_subject_not_found") || msg.includes("pe3_subject_not_found")) {
         return NextResponse.json(
-          { error: "Selected subject does not exist." },
+          { error: "Selected subject does not exist. Please refresh the page and try again." },
           { status: 404 }
         );
       }
-      // Postgres unique constraint violations
-      if (
-        error.code === "23505" ||
-        msg.includes("registrations_roll_number_key")
-      ) {
+      if (error.code === "23505") {
         return NextResponse.json(
-          { error: "This roll number has already registered." },
-          { status: 409 }
-        );
-      }
-      if (msg.includes("registrations_college_email_key")) {
-        return NextResponse.json(
-          { error: "This college email has already registered." },
+          { error: "This student has already registered." },
           { status: 409 }
         );
       }
 
-      console.error("Registration DB error:", error);
       return NextResponse.json(
-        { error: "Registration failed. Please try again." },
+        { error: `Registration failed: ${msg || "Unknown server error. Please try again."}` },
         { status: 500 }
       );
     }
 
-    // 4. Interpret function result
+    // 7. Interpret stored procedure result
     const result = data as {
       success: boolean;
       code: string;
       message: string;
     } | null;
 
-    if (!result || !result.success) {
-      const code = result?.code ?? "unknown";
-      const msg = result?.message ?? "";
+    if (!result) {
+      console.error("Registration RPC returned null/undefined result");
+      return NextResponse.json(
+        { error: "Registration failed: No response from database. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    if (!result.success) {
+      const code = result.code ?? "unknown";
+      const msg = result.message ?? "";
+      console.error("Registration RPC returned failure:", result);
 
       if (code === "duplicate_roll") {
         return NextResponse.json(
@@ -154,6 +193,12 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
+      if (code === "pe2_subject_not_found" || code === "pe3_subject_not_found") {
+        return NextResponse.json(
+          { error: "Selected subject not found. Please refresh and try again." },
+          { status: 404 }
+        );
+      }
 
       return NextResponse.json(
         { error: msg || "Registration failed. Please try again." },
@@ -161,6 +206,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("Registration SUCCESS for:", roll_number);
     return NextResponse.json(
       { message: "Registration Successful." },
       { status: 201 }

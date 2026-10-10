@@ -268,37 +268,30 @@ export default function RegistrationForm() {
     e.preventDefault();
     if (!validate()) return;
 
-    const rollNumber = `2127240701${form.registration_number.trim()}`;
+    // Construct the full 13-digit roll number
+    const rollNumber = `2127240701${form.registration_number.trim().padStart(3, "0")}`;
 
     setSubmitting(true);
     setFieldErrors({});
 
-    try {
-      // 1. Check if already registered
-      const existingRes = await fetch(`/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`);
-      const existingData = await existingRes.json();
-
-      if (existingData?.success && existingData?.registration) {
-        setLocalSuccessData(existingData.registration);
-        setSubmitting(false);
-        return;
-      }
-    } catch {
-      // Continue
-    }
-
+    // Build payload — convert empty strings to null/empty properly for the API
     const payload = {
-      ...form,
-      roll_number: rollNumber,
-      phone_number: form.phone_number.trim(),
-      pe2_p1_id: isPe2Nptel ? "" : form.pe2_p1_id,
-      pe2_p2_id: isPe2Nptel ? "" : form.pe2_p2_id,
-      pe2_p3_id: isPe2Nptel ? "" : form.pe2_p3_id,
+      student_name:     form.student_name.trim(),
+      roll_number:      rollNumber,
+      phone_number:     form.phone_number.trim(),
+      section:          form.section,
+      college_email:    form.college_email.trim().toLowerCase(),
+
+      // PE-II: if NPTEL mode, send null UUIDs and NPTEL name; otherwise send chosen UUIDs
+      pe2_p1_id:        isPe2Nptel ? null : (form.pe2_p1_id || null),
+      pe2_p2_id:        isPe2Nptel ? null : (form.pe2_p2_id || null),
+      pe2_p3_id:        isPe2Nptel ? null : (form.pe2_p3_id || null),
       nptel_pe2_course: isPe2Nptel ? form.nptel_pe2_course.trim() : "",
 
-      pe3_p1_id: isPe3Nptel ? "" : form.pe3_p1_id,
-      pe3_p2_id: isPe3Nptel ? "" : form.pe3_p2_id,
-      pe3_p3_id: isPe3Nptel ? "" : form.pe3_p3_id,
+      // PE-III: if NPTEL mode, send null UUIDs and NPTEL name; otherwise send chosen UUIDs
+      pe3_p1_id:        isPe3Nptel ? null : (form.pe3_p1_id || null),
+      pe3_p2_id:        isPe3Nptel ? null : (form.pe3_p2_id || null),
+      pe3_p3_id:        isPe3Nptel ? null : (form.pe3_p3_id || null),
       nptel_pe3_course: isPe3Nptel ? form.nptel_pe3_course.trim() : "",
     };
 
@@ -312,34 +305,35 @@ export default function RegistrationForm() {
       const data = await res.json();
 
       if (res.ok) {
+        // SUCCESS — build receipt data from subjects in state
         toast.success("Registration Submitted!", {
-          description: "Your elective options have been recorded successfully.",
+          description: "Your elective preferences have been recorded successfully.",
         });
 
-        const findSubj = (id: string) => subjects.find((s) => s.id === id);
+        const findSubj = (id: string | null | undefined) =>
+          id ? subjects.find((s) => s.id === id) : undefined;
 
-        const pe2P1 = findSubj(payload.pe2_p1_id);
-        const pe2P2 = findSubj(payload.pe2_p2_id);
-        const pe2P3 = findSubj(payload.pe2_p3_id);
-
-        const pe3P1 = findSubj(payload.pe3_p1_id);
-        const pe3P2 = findSubj(payload.pe3_p2_id);
-        const pe3P3 = findSubj(payload.pe3_p3_id);
+        const pe2P1 = findSubj(payload.pe2_p1_id ?? undefined);
+        const pe2P2 = findSubj(payload.pe2_p2_id ?? undefined);
+        const pe2P3 = findSubj(payload.pe2_p3_id ?? undefined);
+        const pe3P1 = findSubj(payload.pe3_p1_id ?? undefined);
+        const pe3P2 = findSubj(payload.pe3_p2_id ?? undefined);
+        const pe3P3 = findSubj(payload.pe3_p3_id ?? undefined);
 
         setLocalSuccessData({
-          student_name: payload.student_name,
-          roll_number: payload.roll_number,
-          phone_number: payload.phone_number,
-          section: payload.section,
-          college_email: payload.college_email,
-          created_at: new Date().toISOString(),
+          student_name:      payload.student_name,
+          roll_number:       payload.roll_number,
+          phone_number:      payload.phone_number,
+          section:           payload.section,
+          college_email:     payload.college_email,
+          created_at:        new Date().toISOString(),
           results_published: false,
-          pe2_p1: pe2P1 ? { subject_code: pe2P1.subject_code, subject_name: pe2P1.subject_name } : null,
-          pe2_p2: pe2P2 ? { subject_code: pe2P2.subject_code, subject_name: pe2P2.subject_name } : null,
-          pe2_p3: pe2P3 ? { subject_code: pe2P3.subject_code, subject_name: pe2P3.subject_name } : null,
-          pe3_p1: pe3P1 ? { subject_code: pe3P1.subject_code, subject_name: pe3P1.subject_name } : null,
-          pe3_p2: pe3P2 ? { subject_code: pe3P2.subject_code, subject_name: pe3P2.subject_name } : null,
-          pe3_p3: pe3P3 ? { subject_code: pe3P3.subject_code, subject_name: pe3P3.subject_name } : null,
+          pe2_p1:    pe2P1 ? { subject_code: pe2P1.subject_code, subject_name: pe2P1.subject_name } : null,
+          pe2_p2:    pe2P2 ? { subject_code: pe2P2.subject_code, subject_name: pe2P2.subject_name } : null,
+          pe2_p3:    pe2P3 ? { subject_code: pe2P3.subject_code, subject_name: pe2P3.subject_name } : null,
+          pe3_p1:    pe3P1 ? { subject_code: pe3P1.subject_code, subject_name: pe3P1.subject_name } : null,
+          pe3_p2:    pe3P2 ? { subject_code: pe3P2.subject_code, subject_name: pe3P2.subject_name } : null,
+          pe3_p3:    pe3P3 ? { subject_code: pe3P3.subject_code, subject_name: pe3P3.subject_name } : null,
           pe2_allotted: null,
           pe3_allotted: null,
           pe2_subject: pe2P1 ? { subject_code: pe2P1.subject_code, subject_name: pe2P1.subject_name } : null,
@@ -349,30 +343,42 @@ export default function RegistrationForm() {
         });
 
         setSubmitting(false);
-      } else {
-        toast.error(data.error || "Registration failed. Please try again.", {
-          duration: 5000,
-        });
 
-        if (data.error && data.error.includes("already registered")) {
-          try {
-            const existingRes = await fetch(`/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`);
-            const existingData = await existingRes.json();
-            if (existingData?.success && existingData?.registration) {
-              setLocalSuccessData(existingData.registration);
-            } else {
-              router.refresh();
-            }
-          } catch {
+      } else if (res.status === 409) {
+        // Duplicate — student already registered; fetch and show their existing registration
+        const errMsg = data.error || "This student has already registered.";
+        toast.info(errMsg, { duration: 4000 });
+
+        try {
+          const existingRes = await fetch(
+            `/api/registrations?roll_number=${encodeURIComponent(rollNumber)}`,
+            { cache: "no-store" }
+          );
+          const existingData = await existingRes.json();
+          if (existingData?.success && existingData?.registration) {
+            setLocalSuccessData(existingData.registration);
+          } else {
+            // Fallback: reload page which will server-side detect registration
             router.refresh();
           }
+        } catch {
+          router.refresh();
         }
+        setSubmitting(false);
 
-        fetchSubjects();
+      } else {
+        // Other error (422 validation, 500 server error, etc.)
+        const errMsg = data.error || "Registration failed. Please try again.";
+        toast.error(errMsg, { duration: 6000 });
+        fetchSubjects(); // refresh subject list in case seats changed
         setSubmitting(false);
       }
-    } catch {
-      toast.error("Network error. Please check your connection and try again.");
+
+    } catch (networkErr) {
+      console.error("Network error during registration submission:", networkErr);
+      toast.error("Network error. Please check your internet connection and try again.", {
+        duration: 6000,
+      });
       setSubmitting(false);
     }
   };
